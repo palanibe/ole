@@ -4,6 +4,7 @@ import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.jfree.util.Log;
+import org.kuali.ole.deliver.bo.OleLoanDocument;
 import org.kuali.ole.deliver.bo.OlePatronDocument;
 import org.kuali.ole.deliver.bo.OlePatronNotes;
 import org.kuali.ole.deliver.controller.PatronLookupCircUIController;
@@ -104,6 +105,7 @@ public class CheckoutPatronController extends CheckoutItemController {
         }
         if(StringUtils.isBlank(circForm.getLightboxScript())){
             circForm.setLightboxScript("jq('#checkoutItem_control').focus();");
+            circForm.setLoanDocumentListForCurrentSession(new ArrayList<OleLoanDocument>());
         } else {
             String lightBoxScript = circForm.getLightboxScript();
             String patronLightBoxScript = lightBoxScript + "jq('#barcodeFieldSection_control').blur();";
