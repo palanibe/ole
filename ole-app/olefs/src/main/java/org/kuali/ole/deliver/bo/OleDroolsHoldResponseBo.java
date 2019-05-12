@@ -13,12 +13,14 @@ public class OleDroolsHoldResponseBo {
     private String recallLoanPeriod;
     private int courtesyNoticeInterval;
     private int numberOfOverdueToBeSent;
+    private int numberOfCourtesyToBeSent;
     private int intervalToGenerateOverdueNotice;
     private int replacementBill;
     private String recallNoticeContentConfigName;
     private String requestExpirationNoticeContentConfigName;
     private String OnHoldNoticeContentConfigName;
     private String OnHoldExpirationNoticeContentConfigName;
+    private String OnHoldCourtesyNoticeContentConfigName;
 
     public boolean isRuleMatched() {
         return ruleMatched;
@@ -115,4 +117,21 @@ public class OleDroolsHoldResponseBo {
     public void setOnHoldExpirationNoticeContentConfigName(String onHoldExpirationNoticeContentConfigName) {
         OnHoldExpirationNoticeContentConfigName = onHoldExpirationNoticeContentConfigName;
     }
+
+    public int getNumberOfCourtesyToBeSent() {
+        return numberOfCourtesyToBeSent;
+    }
+
+    public void setNumberOfCourtesyToBeSent(int numberOfCourtesyToBeSent) {
+        this.numberOfCourtesyToBeSent = numberOfCourtesyToBeSent;
+    }
+
+    public String getOnHoldCourtesyNoticeContentConfigName() {
+        return OnHoldCourtesyNoticeContentConfigName;
+    }
+
+    public void setOnHoldCourtesyNoticeContentConfigName(String onHoldCourtesyNoticeContentConfigName) {
+        OnHoldCourtesyNoticeContentConfigName = onHoldCourtesyNoticeContentConfigName;
+    }
+
 }

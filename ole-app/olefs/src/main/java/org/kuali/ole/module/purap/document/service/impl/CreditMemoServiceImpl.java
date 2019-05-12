@@ -236,17 +236,19 @@ public class CreditMemoServiceImpl implements CreditMemoService {
      */
     private Collection<VendorCreditMemoDocument> filterCreditMemoByAppDocStatus(Collection<VendorCreditMemoDocument> creditMemoDocuments, String... appDocStatus) {
         List<String> creditMemoDocNumbers = new ArrayList<String>();
+        Collection<VendorCreditMemoDocument> filteredCreditMemoDocuments = new ArrayList<VendorCreditMemoDocument>();
         for (VendorCreditMemoDocument creditMemo : creditMemoDocuments) {
             creditMemoDocNumbers.add(creditMemo.getDocumentNumber());
         }
+        if(creditMemoDocNumbers.size() > 0) {
+            List<String> filteredCreditMemoDocNumbers = filterCreditMemoByAppDocStatus(creditMemoDocNumbers, appDocStatus);
 
-        List<String> filteredCreditMemoDocNumbers = filterCreditMemoByAppDocStatus(creditMemoDocNumbers, appDocStatus);
 
-        Collection<VendorCreditMemoDocument> filteredCreditMemoDocuments = new ArrayList<VendorCreditMemoDocument>();
-        //add to filtered collection if it is in the filtered payment request doc number list
-        for (VendorCreditMemoDocument creditMemo : creditMemoDocuments) {
-            if (filteredCreditMemoDocNumbers.contains(creditMemo.getDocumentNumber())) {
-                filteredCreditMemoDocuments.add(creditMemo);
+            //add to filtered collection if it is in the filtered payment request doc number list
+            for (VendorCreditMemoDocument creditMemo : creditMemoDocuments) {
+                if (filteredCreditMemoDocNumbers.contains(creditMemo.getDocumentNumber())) {
+                    filteredCreditMemoDocuments.add(creditMemo);
+                }
             }
         }
         return filteredCreditMemoDocuments;
@@ -351,7 +353,7 @@ public class CreditMemoServiceImpl implements CreditMemoService {
 
         //calculate tax if cm not based on vendor
         if (cmDocument.isSourceVendor() == false) {
-            purapService.calculateTax(cmDocument);
+            calculateTax(cmDocument);
         }
 
         // proration
@@ -387,6 +389,13 @@ public class CreditMemoServiceImpl implements CreditMemoService {
         // end proration
     }
 
+    public void calculateTax(VendorCreditMemoDocument purapDocument) {
+        PurchaseOrderDocument pDoc = purapDocument.getPurchaseOrderDocument();
+        String deliveryState = pDoc.getDeliveryStateCode();
+        String deliveryPostalCode = pDoc.getBillingPostalCode();
+        SpringContext.getBean(PurapService.class).calculateTaxForPREQ(purapDocument,deliveryState,deliveryPostalCode);
+    }
+
     /**
      * @see org.kuali.ole.module.purap.document.service.CreditMemoService#getCreditMemoByDocumentNumber(java.lang.String)
      */
@@ -413,6 +422,34 @@ public class CreditMemoServiceImpl implements CreditMemoService {
     @Override
     public VendorCreditMemoDocument getCreditMemoDocumentById(Integer purchasingDocumentIdentifier) {
         return getCreditMemoByDocumentNumber(creditMemoDao.getDocumentNumberByCreditMemoId(purchasingDocumentIdentifier));
+    }
+
+    public List<VendorCreditMemoDocument> getCreditMemoDocumentsByPurchaseOrderId(Integer poDocId) {
+        List<VendorCreditMemoDocument> cmList = new ArrayList<VendorCreditMemoDocument>();
+        List<String> docNumbers  = creditMemoDao.getActiveCreditMemoDocumentNumbersForPurchaseOrder(poDocId);
+        for (String docNumber : docNumbers) {
+            VendorCreditMemoDocument cm = getCreditMemoDocumentByDocumentNumber(docNumber);
+            if (ObjectUtils.isNotNull(cm)) {
+                cmList.add(cm);
+            }
+        }
+        return cmList;
+    }
+
+    public VendorCreditMemoDocument getCreditMemoDocumentByDocumentNumber(String documentNumber) {
+        LOG.debug("getCreditMemoDocumentByDocumentNumber() started");
+
+        if (ObjectUtils.isNotNull(documentNumber)) {
+            try {
+                VendorCreditMemoDocument doc = (VendorCreditMemoDocument) documentService.getByDocumentHeaderId(documentNumber);
+                return doc;
+            } catch (WorkflowException e) {
+                String errorMessage = "Error getting Credit Memo document from document service";
+                LOG.error("getCreditMemoDocumentByDocumentNumber() " + errorMessage, e);
+                throw new RuntimeException(errorMessage, e);
+            }
+        }
+        return null;
     }
 
     /**
@@ -648,7 +685,7 @@ public class CreditMemoServiceImpl implements CreditMemoService {
         VendorCreditMemoDocument cmDocument = (VendorCreditMemoDocument) apDoc;
         if (cmDocument.isReopenPurchaseOrderIndicator()) {
             String docType = PurapConstants.PurchaseOrderDocTypes.PURCHASE_ORDER_CLOSE_DOCUMENT;
-            purchaseOrderService.createAndRoutePotentialChangeDocument(cmDocument.getPurchaseOrderDocument().getDocumentNumber(), docType, "reopened by Payment Request " + apDoc.getPurapDocumentIdentifier() + "cancel", new ArrayList(), PurapConstants.PurchaseOrderStatuses.APPDOC_PENDING_CLOSE);
+            purchaseOrderService.createAndRoutePotentialChangeDocument(cmDocument.getPurchaseOrderDocument(), docType, "reopened by Payment Request " + apDoc.getPurapDocumentIdentifier() + "cancel", new ArrayList(), PurapConstants.PurchaseOrderStatuses.APPDOC_PENDING_CLOSE);
         }
     }
 

@@ -22,6 +22,8 @@ import org.kuali.ole.util.DocstoreUtil;
 import org.kuali.ole.utility.OleStopWatch;
 import org.kuali.rice.core.api.config.property.ConfigContext;
 import org.kuali.rice.core.api.resourceloader.GlobalResourceLoader;
+import org.kuali.rice.kim.api.identity.principal.Principal;
+import org.kuali.rice.kim.service.impl.IdentityManagementServiceImpl;
 
 import java.util.*;
 
@@ -188,12 +190,46 @@ public class OLENCIPAcceptItemServiceImpl extends OLENCIPUtil implements OLEAcce
             requestExpirationDay = droolsResponse.getDroolsExchange().getFromContext("requestExpirationDays").toString();
         }
 
+        String requestExpirationConfigName = null;
+        if (droolsResponse.getDroolsExchange().getFromContext(OLEConstants.REQUEST_EXPIRATION_NOTICE_CONTENT_CONFIG_NAME) != null){
+            requestExpirationConfigName = droolsResponse.getDroolsExchange().getFromContext(OLEConstants.REQUEST_EXPIRATION_NOTICE_CONTENT_CONFIG_NAME).toString();
+        }
+
+        String onHoldConfigName = null;
+        if (droolsResponse.getDroolsExchange().getFromContext(OLEConstants.ON_HOLD_NOTICE_CONTENT_CONFIG_NAME) != null){
+            onHoldConfigName = droolsResponse.getDroolsExchange().getFromContext(OLEConstants.ON_HOLD_NOTICE_CONTENT_CONFIG_NAME).toString();
+        }
+
+        String onHoldCourtesyConfigName = null;
+        if (droolsResponse.getDroolsExchange().getFromContext(OLEConstants.ON_HOLD_COURTESY_NOTICE_CONTENT_CONFIG_NAME) != null){
+            onHoldCourtesyConfigName = droolsResponse.getDroolsExchange().getFromContext(OLEConstants.ON_HOLD_COURTESY_NOTICE_CONTENT_CONFIG_NAME).toString();
+        }
+
+        String onHoldExpirationConfigName = null;
+        if (droolsResponse.getDroolsExchange().getFromContext(OLEConstants.ON_HOLD_EXPIRATION_NOTICE_CONTENT_CONFIG_NAME) != null){
+            onHoldExpirationConfigName = droolsResponse.getDroolsExchange().getFromContext(OLEConstants.ON_HOLD_EXPIRATION_NOTICE_CONTENT_CONFIG_NAME).toString();
+        }
+
+
         String itemIdentifier = null;
         String bibId = null;
         BibTrees bibTrees = null;
+        String operatorName = null;
         try {
+            if(StringUtils.isNotBlank(operatorId)) {
+                IdentityManagementServiceImpl identityManagementService = new IdentityManagementServiceImpl();
+                Principal principal = identityManagementService.getPrincipal(operatorId);
+                if(principal!=null) {
+                    operatorName = principal.getPrincipalName();
+                }
+            }
             Long startCreationOfItemTime = System.currentTimeMillis();
-            bibTrees = getOleCirculationHelperService().createItem(itemBarcode, callNumber, title, author, itemType, location);
+            if(StringUtils.isNotBlank(operatorName)) {
+                bibTrees = getOleCirculationHelperService().createItem(itemBarcode, callNumber, title, author, itemType, location, operatorName);
+            }
+            else {
+                bibTrees = getOleCirculationHelperService().createItem(itemBarcode, callNumber, title, author, itemType, location, operatorId);
+            }
             Long endCreationOfItemTime = System.currentTimeMillis();
             LOG.info("Time taken to create item : " + (endCreationOfItemTime - startCreationOfItemTime));
         } catch (Exception e) {
@@ -216,7 +252,7 @@ public class OLENCIPAcceptItemServiceImpl extends OLENCIPUtil implements OLEAcce
             return acceptItemResponseData;
         }
 
-        Map responseMap = getOlencipAcceptItemUtil().placeRequest(operatorId, olePatronDocument, itemBarcode, itemIdentifier, olePickUpLocation, oleDeliverRequestBo.getRequestTypeId(), bibId, title, author, callNumber, requestExpirationDay, location);
+        Map responseMap = getOlencipAcceptItemUtil().placeRequest(operatorId, olePatronDocument, itemBarcode, itemIdentifier, olePickUpLocation, oleDeliverRequestBo.getRequestTypeId(), bibId, title, author, callNumber, requestExpirationDay, location, requestExpirationConfigName,onHoldConfigName,onHoldCourtesyConfigName,onHoldExpirationConfigName);
         try {
             if (responseMap.get(OLEConstants.STATUS).equals(OLEConstants.RQST_SUCCESS)) {
                 ncipAcceptItemResponseBuilder.setRequestId(acceptItemResponseData, agencyId, responseMap.get(OLEConstants.OleDeliverRequest.REQUEST_ID).toString());

@@ -34,6 +34,7 @@ import org.springframework.web.servlet.ModelAndView;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import java.sql.Timestamp;
 import java.util.*;
 
@@ -136,7 +137,13 @@ public class OLEBatchProcessDefinitionController extends UifControllerBase {
                     ingestedFile2 = oleBatchProcessDefinitionDocument.getSerialRecordTypeFile();
                     ingestedFile3 = oleBatchProcessDefinitionDocument.getSerialRecordHistoryFile();
                 }
-            } else if (oleBatchProcessDefinitionDocument.getBatchProcessType().equalsIgnoreCase(OLEConstants.OLEBatchProcess.BATCH_EXPORT)) {
+            }
+            else if (oleBatchProcessDefinitionDocument.getBatchProcessType().equals(OLEConstants.OLEBatchProcess.FUND_RECORD_IMPORT)) {
+
+                    ingestedFile1 = oleBatchProcessDefinitionDocument.getFundRecordDocumentFile();
+                    ingestedFile2 = oleBatchProcessDefinitionDocument.getFundAcctlnDocumentFile();
+            }
+            else if (oleBatchProcessDefinitionDocument.getBatchProcessType().equalsIgnoreCase(OLEConstants.OLEBatchProcess.BATCH_EXPORT)) {
                 ingestedFile1 = oleBatchProcessDefinitionDocument.getIngestedFile();
             } else {
                 ingestedFile1 = oleBatchProcessDefinitionDocument.getIngestedFile();
@@ -196,7 +203,12 @@ public class OLEBatchProcessDefinitionController extends UifControllerBase {
                 } else {
                     createBatchProcessJobFile(oleBatchProcessDefinitionDocument.getOleBatchProcessJobDetailsBoList().get(0), ingestedFile1, ingestedFile2, ingestedFile3, oleBatchProcessDefinitionDocument.getBatchProcessType(), OLEConstants.OLEBatchProcess.PROFILE_JOB, bytesInIngestedFile1, bytesInIngestedFile2, bytesInIngestedFile3);
                 }
-            } else if (oleBatchProcessDefinitionDocument.getBatchProcessType().equalsIgnoreCase(OLEConstants.OLEBatchProcess.BATCH_EXPORT)) {
+            }
+            // for Fund record import
+            else if (oleBatchProcessDefinitionDocument.getBatchProcessType().equals(OLEConstants.OLEBatchProcess.FUND_RECORD_IMPORT)) {
+                createBatchProcessFundCodeJobFile(oleBatchProcessDefinitionDocument.getOleBatchProcessJobDetailsBoList().get(0), ingestedFile1, ingestedFile2, oleBatchProcessDefinitionDocument.getBatchProcessType(), OLEConstants.OLEBatchProcess.PROFILE_JOB, bytesInIngestedFile1, bytesInIngestedFile2);
+            }
+            else if (oleBatchProcessDefinitionDocument.getBatchProcessType().equalsIgnoreCase(OLEConstants.OLEBatchProcess.BATCH_EXPORT)) {
                 if (oleBatchProcessDefinitionDocument.getLoadIdFromFile().equalsIgnoreCase("true")) {
                     createBatchProcessJobFile(oleBatchProcessDefinitionDocument.getOleBatchProcessJobDetailsBoList().get(0), ingestedFile1, null, oleBatchProcessDefinitionDocument.getBatchProcessType(), OLEConstants.OLEBatchProcess.PROFILE_JOB, bytesInIngestedFile1, bytesInIngestedFile2);
                 }
@@ -257,7 +269,17 @@ public class OLEBatchProcessDefinitionController extends UifControllerBase {
                 oleBatchProcessDefinitionDocument.setSerialRecordHistoryFileName(historyFile != null ? historyFile.getOriginalFilename() : null);
             }
             oleBatchProcessDefinitionDocument.setOutputFormat(oleBatchProcessDefinitionDocument.getInputFormat());
-        } else if (oleBatchProcessDefinitionDocument.getBatchProcessType().equalsIgnoreCase(OLEConstants.OLEBatchProcess.BATCH_EXPORT) && oleBatchProcessDefinitionDocument.getLoadIdFromFile().equalsIgnoreCase("true")) {
+        } else if (oleBatchProcessDefinitionDocument.getBatchProcessType().equalsIgnoreCase(OLEConstants.OLEBatchProcess.FUND_RECORD_IMPORT)) {
+                MultipartFile documentFile = oleBatchProcessDefinitionDocument.getFundRecordDocumentFile();
+                MultipartFile accountFile = oleBatchProcessDefinitionDocument.getFundAcctlnDocumentFile();
+                oleBatchProcessJobDetailsBo.setUploadFileName((documentFile != null ? documentFile.getOriginalFilename() + "," : "")
+                        + (accountFile != null ? accountFile.getOriginalFilename() + "," : ""));
+                oleBatchProcessDefinitionDocument.setFundRecordDocumentFileName(documentFile != null ? documentFile.getOriginalFilename() : null);
+                oleBatchProcessDefinitionDocument.setFundAcclnFileName(accountFile != null ? accountFile.getOriginalFilename() : null);
+
+            oleBatchProcessDefinitionDocument.setOutputFormat(oleBatchProcessDefinitionDocument.getInputFormat());
+        }
+        else if (oleBatchProcessDefinitionDocument.getBatchProcessType().equalsIgnoreCase(OLEConstants.OLEBatchProcess.BATCH_EXPORT) && oleBatchProcessDefinitionDocument.getLoadIdFromFile().equalsIgnoreCase("true")) {
             MultipartFile ingestFile = oleBatchProcessDefinitionDocument.getIngestedFile();
             oleBatchProcessJobDetailsBo.setUploadFileName(ingestFile.getOriginalFilename());
             oleBatchProcessDefinitionDocument.setUploadFileName(ingestFile.getOriginalFilename());
@@ -341,11 +363,19 @@ public class OLEBatchProcessDefinitionController extends UifControllerBase {
 
     @RequestMapping(params = "methodToCall=route")
     public ModelAndView route(@ModelAttribute("KualiForm") UifFormBase form, BindingResult result,
-                              HttpServletRequest request, HttpServletResponse response) {
+                              HttpServletRequest request, HttpServletResponse response) throws IOException {
         OLEBatchProcessDefinitionForm oleBatchProcessDefinitionForm = (OLEBatchProcessDefinitionForm) form;
         OLEBatchProcessDefinitionDocument oleBatchProcessDefinitionDocument = (OLEBatchProcessDefinitionDocument) oleBatchProcessDefinitionForm.getDocument();
         buildProcessDefinitionDocument(oleBatchProcessDefinitionDocument);
         oleBatchProcessDefinitionForm.setDocument(oleBatchProcessDefinitionDocument);
+        String content=null;
+
+        if(oleBatchProcessDefinitionDocument.getBatchProcessType().equals(OLEConstants.OLEBatchProcess.ORDER_RECORD_IMPORT)) {
+            content = new String(oleBatchProcessDefinitionDocument.getMarcFile().getBytes());
+        }else if ((oleBatchProcessDefinitionDocument.getBatchProcessType().equalsIgnoreCase(OLEConstants.OLEBatchProcess.BATCH_EXPORT) && oleBatchProcessDefinitionDocument.getLoadIdFromFile().equalsIgnoreCase(String.valueOf(Boolean.TRUE))) || !oleBatchProcessDefinitionDocument.getBatchProcessType().equalsIgnoreCase(OLEConstants.OLEBatchProcess.BATCH_EXPORT)){
+            content = new String(oleBatchProcessDefinitionDocument.getIngestedFile().getBytes());
+        }
+
         boolean isValidated = getOleBatchProcessRule().batchValidations(oleBatchProcessDefinitionForm);
         if (!isValidated) {
             return getUIFModelAndView(oleBatchProcessDefinitionForm);
@@ -365,9 +395,9 @@ public class OLEBatchProcessDefinitionController extends UifControllerBase {
                 getBusinessObjectService().save(oleBatchProcessDefinitionDocument);
                 if (oleBatchProcessDefinitionDocument.getOleBatchProcessScheduleBoList() != null && oleBatchProcessDefinitionDocument.getOleBatchProcessScheduleBoList().size() > 0 && !updateDocFlag) {
                     if (oleBatchProcessDefinitionDocument.getBatchProcessType().equals(OLEConstants.OLEBatchProcess.ORDER_RECORD_IMPORT)) {
-                        createBatchProcessSchedulerFile(oleBatchProcessDefinitionDocument.getOleBatchProcessScheduleBoList().get(0), oleBatchProcessDefinitionDocument.getMarcFile(), oleBatchProcessDefinitionDocument.getEdiFile(), oleBatchProcessDefinitionDocument.getBatchProcessType(), OLEConstants.OLEBatchProcess.PROFILE_SCHEDULE);
+                        createBatchProcessSchedulerFile(oleBatchProcessDefinitionDocument.getOleBatchProcessScheduleBoList().get(0), oleBatchProcessDefinitionDocument.getMarcFile(), oleBatchProcessDefinitionDocument.getEdiFile(), oleBatchProcessDefinitionDocument.getBatchProcessType(), OLEConstants.OLEBatchProcess.PROFILE_SCHEDULE,content);
                     } else if ((oleBatchProcessDefinitionDocument.getBatchProcessType().equalsIgnoreCase(OLEConstants.OLEBatchProcess.BATCH_EXPORT) && oleBatchProcessDefinitionDocument.getLoadIdFromFile().equalsIgnoreCase(String.valueOf(Boolean.TRUE))) || !oleBatchProcessDefinitionDocument.getBatchProcessType().equalsIgnoreCase(OLEConstants.OLEBatchProcess.BATCH_EXPORT)) {
-                        createBatchProcessSchedulerFile(oleBatchProcessDefinitionDocument.getOleBatchProcessScheduleBoList().get(0), oleBatchProcessDefinitionDocument.getIngestedFile(), null, oleBatchProcessDefinitionDocument.getBatchProcessType(), OLEConstants.OLEBatchProcess.PROFILE_SCHEDULE);
+                        createBatchProcessSchedulerFile(oleBatchProcessDefinitionDocument.getOleBatchProcessScheduleBoList().get(0), oleBatchProcessDefinitionDocument.getIngestedFile(), null, oleBatchProcessDefinitionDocument.getBatchProcessType(), OLEConstants.OLEBatchProcess.PROFILE_SCHEDULE,content);
                     }
                 }
             } catch (Exception e) {
@@ -471,15 +501,23 @@ public class OLEBatchProcessDefinitionController extends UifControllerBase {
         }
     }
 
-    private void createBatchProcessSchedulerFile(OLEBatchProcessScheduleBo oleBatchProcessScheduleBo, MultipartFile ingestFile1, MultipartFile ingestFile2, String batchProceesType, String jobType) throws Exception {
+    private void createBatchProcessFundCodeJobFile(OLEBatchProcessJobDetailsBo batchProcessJobDetailsBo, MultipartFile ingestFile1, MultipartFile ingestFile2, String batchProceesType, String jobType, String bytesInIngestedFile1, String bytesInIngestedFile2) throws Exception {
+        if (ingestFile1 != null || ingestFile2 != null) {
+            String documentFileName = ingestFile1 != null ? batchProcessJobDetailsBo.getJobId() + jobType + "_" + ingestFile1.getOriginalFilename() : null;
+            String fundCodeAcclnFileName = ingestFile2 != null ? batchProcessJobDetailsBo.getJobId() + jobType + "_" + ingestFile2.getOriginalFilename() : null;
+            getOLEBatchProcessDataHelper().createFundCodeBatchProcessFile(batchProceesType, documentFileName, fundCodeAcclnFileName, bytesInIngestedFile1, bytesInIngestedFile2, batchProcessJobDetailsBo.getJobId());
+        }
+    }
+
+    private void createBatchProcessSchedulerFile(OLEBatchProcessScheduleBo oleBatchProcessScheduleBo, MultipartFile ingestFile1, MultipartFile ingestFile2, String batchProceesType, String jobType,String content) throws Exception {
         if (ingestFile2 == null && ingestFile1!=null) {
             String ingestFileName = oleBatchProcessScheduleBo.getScheduleId() + jobType + "_" + ingestFile1.getOriginalFilename();
-            getOLEBatchProcessDataHelper().createBatchProcessFile(batchProceesType, ingestFileName, new String(ingestFile1.getBytes()), oleBatchProcessScheduleBo.getScheduleId());
+            getOLEBatchProcessDataHelper().createBatchProcessFile(batchProceesType, ingestFileName, content, oleBatchProcessScheduleBo.getScheduleId());
         }
         else  if (ingestFile2 != null && ingestFile1!=null) {
             String mrcFileName = oleBatchProcessScheduleBo.getScheduleId() + jobType + "_" + ingestFile1.getOriginalFilename();
             String ediFileName = oleBatchProcessScheduleBo.getScheduleId() + jobType + "_" + ingestFile2.getOriginalFilename();
-            getOLEBatchProcessDataHelper().createBatchProcessFile(batchProceesType, mrcFileName, ediFileName, new String(ingestFile1.getBytes()), new String(ingestFile2.getBytes()) , oleBatchProcessScheduleBo.getScheduleId());
+            getOLEBatchProcessDataHelper().createBatchProcessFile(batchProceesType, mrcFileName, ediFileName, content, new String(ingestFile2.getBytes()) , oleBatchProcessScheduleBo.getScheduleId());
 
         }
 
@@ -598,6 +636,8 @@ public class OLEBatchProcessDefinitionController extends UifControllerBase {
         } else if (OLEConstants.OLEBatchProcess.BATCH_EXPORT.equalsIgnoreCase(oleBatchProcessDefinitionDocument.getBatchProcessType())) {
             oleBatchProcessDefinitionDocument.setBatchProcessProfileId(OLEBatchProcessBatchExportProfileValueFinder.getValue(oleBatchProcessDefinitionDocument.getBatchProcessProfileName()));
             oleBatchProcessDefinitionDocument.getLoadIdFromFile();
+        } else if (OLEConstants.OLEBatchProcess.FUND_RECORD_IMPORT.equalsIgnoreCase(oleBatchProcessDefinitionDocument.getBatchProcessType())) {
+            oleBatchProcessDefinitionDocument.setBatchProcessProfileId(OLEBatchProcessFundRecordProfileValueFinder.getValue(oleBatchProcessDefinitionDocument.getBatchProcessProfileName()));
         }
     }
 

@@ -63,63 +63,78 @@ public class RenewItemExecutor implements Callable {
                 oleLoanDocument.setPastDueDate(oleLoanDocument.getLoanDueDate());
 
                 ItemRecord itemRecord = getCircUtilController().getItemRecordByBarcode(itemBarcode);
-                OleItemRecordForCirc oleItemRecordForCirc = getOleItemRecordForCirc(itemRecord);
-                NoticeInfo noticeInfo = new NoticeInfo();
+                if (itemRecord !=null && !itemRecord.getClaimsReturnedFlag()){
+                    OleItemRecordForCirc oleItemRecordForCirc = getOleItemRecordForCirc(itemRecord);
+                    if (oleItemRecordForCirc != null && oleItemRecordForCirc.getItemStatusRecord() != null
+                            && OLEConstants.ITEM_STATUS_LOST.equalsIgnoreCase(oleItemRecordForCirc.getItemStatusRecord().getCode())){
+                        finalDroolResponse = new DroolsResponse();
+                        oleLoanDocument.setErrorMessage("Item  wasn't renewed because the item is 'lost'.");
+                        finalDroolResponse.getDroolsExchange().addToContext(itemBarcode, oleLoanDocument);
+                    } else {
+                        NoticeInfo noticeInfo = new NoticeInfo();
 
-                finalDroolResponse = fireRules(olePatronDocument, oleLoanDocument, oleItemRecordForCirc, noticeInfo);
+                        finalDroolResponse = fireRules(olePatronDocument, oleLoanDocument, oleItemRecordForCirc, noticeInfo);
 
-                Boolean fineCalcWhileRenew = getParameterValueResolver().getParameterAsBoolean(OLEConstants.APPL_ID_OLE, OLEConstants
-                        .DLVR_NMSPC, OLEConstants.DLVR_CMPNT, OLEConstants.FINE_CALC_WHILE_RENEW);
-                if (fineCalcWhileRenew) {
-                    ItemFineRate itemFineRate = getCircUtilController().fireFineRules(oleLoanDocument, oleItemRecordForCirc, olePatronDocument);
-                    oleLoanDocument.setItemFineRate(itemFineRate);
-                }
+                        processDueDateBasedOnExpirationDate(olePatronDocument, oleLoanDocument);
 
-                if (finalDroolResponse.isRuleMatched()) {
-                    if (StringUtils.isBlank(finalDroolResponse.retrieveErrorMessage())) {
-                        boolean pastAndRenewDueDateSame = false;
-                        try {
-                            pastAndRenewDueDateSame = isPastAndRenewDueDateSame(oleLoanDocument);
-                            if (!pastAndRenewDueDateSame) {
-                                Integer numRenewals = IncrementRenewalCount(oleLoanDocument);
-                                oleLoanDocument.setNumberOfRenewals(numRenewals.toString());
-                                oleLoanDocument.getDeliverNotices().clear();
-                                List<OLEDeliverNotice> oleDeliverNotices = getCircUtilController().processNotices(oleLoanDocument, oleItemRecordForCirc.getItemRecord());
-                                oleLoanDocument.setDeliverNotices(oleDeliverNotices);
-                                if (null != oleLoanDocument.getLoanId()) {
-                                    finalDroolResponse.setSucessMessage("Successfully Renewed");
-                                    finalDroolResponse.getDroolsExchange().addToContext(oleLoanDocument.getItemUuid(), oleLoanDocument);
+                        Boolean fineCalcWhileRenew = getParameterValueResolver().getParameterAsBoolean(OLEConstants.APPL_ID_OLE, OLEConstants
+                                .DLVR_NMSPC, OLEConstants.DLVR_CMPNT, OLEConstants.FINE_CALC_WHILE_RENEW);
+                        if (fineCalcWhileRenew) {
+                            ItemFineRate itemFineRate = getCircUtilController().fireFineRules(oleLoanDocument, oleItemRecordForCirc, olePatronDocument);
+                            oleLoanDocument.setItemFineRate(itemFineRate);
+                        }
 
-                                    getCircUtilController().generateBillPayment(oleLoanDocument.getCirculationLocationId(), oleLoanDocument, new Timestamp(new Date().getTime()), new Timestamp(oleLoanDocument.getPastDueDate().getTime()));
+                        if (finalDroolResponse.isRuleMatched()) {
+                            if (StringUtils.isBlank(finalDroolResponse.retrieveErrorMessage())) {
+                                boolean pastAndRenewDueDateSame = false;
+                                try {
+                                    pastAndRenewDueDateSame = isPastAndRenewDueDateSame(oleLoanDocument);
+                                    if (!pastAndRenewDueDateSame) {
+                                        Integer numRenewals = IncrementRenewalCount(oleLoanDocument);
+                                        oleLoanDocument.setNumberOfRenewals(numRenewals.toString());
+                                        oleLoanDocument.getDeliverNotices().clear();
+                                List<OLEDeliverNotice> oleDeliverNotices = getCircUtilController().processNotices(oleLoanDocument, oleItemRecordForCirc.getItemRecord(), null);
+                                        oleLoanDocument.setDeliverNotices(oleDeliverNotices);
+                                        if (null != oleLoanDocument.getLoanId()) {
+                                            finalDroolResponse.setSucessMessage("Successfully Renewed");
+                                            finalDroolResponse.getDroolsExchange().addToContext(oleLoanDocument.getItemUuid(), oleLoanDocument);
 
+                                            getCircUtilController().generateBillPayment(oleLoanDocument.getCirculationLocationId(), oleLoanDocument, new Timestamp(new Date().getTime()), new Timestamp(oleLoanDocument.getPastDueDate().getTime()),true);
+
+                                        }
+                                    } else {
+                                        oleLoanDocument.setLoanDueDate(loanDueDate);
+                                        oleLoanDocument.setPastDueDate(pastDueDate);
+                                        oleLoanDocument.setErrorMessage("The past and the current due data are same and hence item wasn't renewed.");
+                                        finalDroolResponse.getDroolsExchange().addToContext(itemBarcode, oleLoanDocument);
+                                    }
+                                } catch (Exception e) {
+                                    oleLoanDocument.setLoanDueDate(loanDueDate);
+                                    oleLoanDocument.setPastDueDate(pastDueDate);
+                                    if (e.getMessage().equalsIgnoreCase("No Fixed Due Date found for the renewal policy")) {
+                                        oleLoanDocument.setErrorMessage("Item wasn't renewed. Invalid Fixed Due Date Mapping.");
+                                        finalDroolResponse.getDroolsExchange().addToContext(itemBarcode, oleLoanDocument);
+                                    } else {
+                                        oleLoanDocument.setErrorMessage("Item wasn't renewed. " + e.getMessage());
+                                        finalDroolResponse.getDroolsExchange().addToContext(itemBarcode, oleLoanDocument);
+                                    }
                                 }
                             } else {
                                 oleLoanDocument.setLoanDueDate(loanDueDate);
                                 oleLoanDocument.setPastDueDate(pastDueDate);
-                                oleLoanDocument.setErrorMessage("The past and the current due data are same and hence item wasn't renewed.");
+                                oleLoanDocument.setErrorMessage(finalDroolResponse.retrieveErrorMessage());
                                 finalDroolResponse.getDroolsExchange().addToContext(itemBarcode, oleLoanDocument);
                             }
-                        } catch (Exception e) {
+                        } else {
                             oleLoanDocument.setLoanDueDate(loanDueDate);
                             oleLoanDocument.setPastDueDate(pastDueDate);
-                            if (e.getMessage().equalsIgnoreCase("No Fixed Due Date found for the renewal policy")) {
-                                oleLoanDocument.setErrorMessage("Item wasn't renewed. Invalid Fixed Due Date Mapping.");
-                                finalDroolResponse.getDroolsExchange().addToContext(itemBarcode, oleLoanDocument);
-                            } else {
-                                oleLoanDocument.setErrorMessage("Item wasn't renewed. " + e.getMessage());
-                                finalDroolResponse.getDroolsExchange().addToContext(itemBarcode, oleLoanDocument);
-                            }
+                            oleLoanDocument.setErrorMessage("Item wasn't renewed as no circulation policy was found!");
+                            finalDroolResponse.getDroolsExchange().addToContext(itemBarcode, oleLoanDocument);
                         }
-                    } else {
-                        oleLoanDocument.setLoanDueDate(loanDueDate);
-                        oleLoanDocument.setPastDueDate(pastDueDate);
-                        oleLoanDocument.setErrorMessage(finalDroolResponse.retrieveErrorMessage());
-                        finalDroolResponse.getDroolsExchange().addToContext(itemBarcode, oleLoanDocument);
                     }
-                } else {
-                    oleLoanDocument.setLoanDueDate(loanDueDate);
-                    oleLoanDocument.setPastDueDate(pastDueDate);
-                    oleLoanDocument.setErrorMessage("Item wasn't renewed as no circulation policy was found!");
+                }else {
+                    finalDroolResponse = new DroolsResponse();
+                    oleLoanDocument.setErrorMessage("Item  wasn't renewed because the item is claims returned.");
                     finalDroolResponse.getDroolsExchange().addToContext(itemBarcode, oleLoanDocument);
                 }
             }else{
@@ -226,5 +241,23 @@ public class RenewItemExecutor implements Callable {
 
     public void setParameterValueResolver(ParameterValueResolver parameterValueResolver) {
         this.parameterValueResolver = parameterValueResolver;
+    }
+
+    private void processDueDateBasedOnExpirationDate(OlePatronDocument olePatronDocument, OleLoanDocument
+            oleLoanDocument) {
+        if (olePatronDocument.getExpirationDate() != null && oleLoanDocument.getLoanDueDate() != null) {
+            Timestamp expirationDate = new Timestamp(olePatronDocument.getExpirationDate().getTime());
+            if (isPatronExpiringBeforeLoanDue(oleLoanDocument, expirationDate) && isPatronExpirationGreaterThanToday(expirationDate)) {
+                oleLoanDocument.setLoanDueDate(expirationDate);
+            }
+        }
+    }
+
+    private boolean isPatronExpirationGreaterThanToday(Timestamp expirationDate) {
+        return expirationDate.compareTo(new Date()) > 0;
+    }
+
+    private boolean isPatronExpiringBeforeLoanDue(OleLoanDocument oleLoanDocument, Timestamp expirationDate) {
+        return expirationDate.compareTo(oleLoanDocument.getLoanDueDate()) < 0;
     }
 }

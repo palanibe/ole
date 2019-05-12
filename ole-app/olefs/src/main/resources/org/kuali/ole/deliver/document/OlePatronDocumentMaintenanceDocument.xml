@@ -73,6 +73,7 @@
         <property name="items" >
             <list merge="true">
                 <!--<bean id="OlePatronDocument-OleDocumentOverviewSection" parent="Uif-DocumentOverviewSection" p:order="10" p:render="@{maintenanceAction ne 'Delete'}"/>-->
+                <ref bean="Patron_Edit_Bill_Section"/>
                 <ref bean="OlePatronDocument-OverviewSection"/>
                 <ref bean="OlePatronDocument-ContactsSection" />
                 <ref bean="OlePatronDocument-Affiliation-Wrapper" />
@@ -86,8 +87,13 @@
                 <ref bean="OlePatronDocument-PatronLocalIdSection-Wrapper" />
                 <ref bean="OlePatronDocument-InvalidOrLostBarcodeSection-Wrapper" />
                 <ref bean="OlePatronDocument-Barcode-Update-Section" />
+                <ref bean="OlePatronDocument-user-note-Section" />
+                <ref bean="OlePatronDocument-userBlock-note-Section" />
+                <ref bean="OlePatronDocument-Block-Section" />
                <!-- <ref bean="OlePatronDocument-MissingPiecesItemInfo"/>-->
                 <ref bean="showUpdateBarcodeDialogBox"/>
+                <ref bean="showPatronUserNoteDialogBox"/>
+                <ref bean="showPatronBlockDialogBox"/>
                 <ref bean="showReinstateDialogBox"/>
                 <ref bean="OlePatronDocument-reinstateBarcode-section"/>
                 <ref bean="Refresh-OlePatronDocument-InvalidOrLostBarcodeSection"/>
@@ -254,7 +260,6 @@
             <list>
                 <ref bean="Patron-FooterBase-Header"/>
                 <ref bean="OlePatronDocument-FooterBase-Header"/>
-                <ref bean="Patron_Edit_Bill_Section"/>
                 <bean id="note" parent="Uif-OleDocumentOverviewSection" p:order="13"/>
                 <bean id="notesec" parent="Uif-OleDocumentNotesSection" p:disclosure.defaultOpen="false" p:order="30" p:render="false"/>
                 <bean id="adhoc" parent="Uif-OleDocumentAdHocRecipientsSection" p:disclosure.defaultOpen="false" p:order="40"/>
@@ -278,7 +283,8 @@
 
     <bean id="OlePatronDocument-FooterBase-Header" parent="OlePatronDocument-FooterBase" p:render="@{maintenanceAction eq 'Delete'}" p:order="11"/>
 
-    <bean id="Patron_Edit_Bill_Section" parent="Uif-HorizontalFieldGroup" p:render="@{document.newMaintainableObject.dataObject.showBillUrlsFlag eq true}" p:order="12">
+    <bean id="Patron_Edit_Bill_Section" parent="Uif-HorizontalFieldGroup" p:render="@{maintenanceAction eq 'Edit'}"
+          p:order="12">
         <property name="items">
             <list>
                 <bean id="createPatronBillLink_edit" parent="Uif-LinkField" p:style="font-weight:bold;font-size:15px;margin-left:1.5em;" p:href="@{#dp.createBillUrl}"  p:linkText="Create Bill"  p:target="_blank"/>
@@ -1092,6 +1098,11 @@
                         <bean parent="Uif-CheckboxControl"/>
                     </property>
                 </bean>
+                <bean id="checkoutReceiptOptOut" parent="Uif-InputField" p:propertyName="checkoutReceiptOptOut" p:label="CheckOut Receipts Opt Out">
+                    <property name="control">
+                        <bean parent="Uif-CheckboxControl"/>
+                    </property>
+                </bean>
             </list>
         </property>
     </bean>
@@ -1173,11 +1184,11 @@
         <property name="collectionObjectClass" value="org.kuali.ole.deliver.bo.OlePatronNotes" />
         <property name="propertyName" value="notes" />
         <property name="layoutManager.renderSequenceField" value="false" />
-        <property name="renderAddLine" value="@{document.newMaintainableObject.dataObject.expirationFlag}"/>
-        <property name="renderLineActions" value="@{document.newMaintainableObject.dataObject.expirationFlag}"/>
+        <!--<property name="renderAddLine" value="@{document.newMaintainableObject.dataObject.expirationFlag}"/>
+        <property name="renderLineActions" value="@{document.newMaintainableObject.dataObject.expirationFlag}"/>-->
         <property name="items">
             <list>
-                <bean id="patronNoteTypeId" parent="OlePatron-InputField" p:propertyName="patronNoteTypeId" p:label="Note Type" p:required="true" p:readOnly="@{!document.newMaintainableObject.dataObject.expirationFlag}">
+                <bean id="patronNoteTypeId" parent="OlePatron-InputField" p:propertyName="patronNoteTypeId" p:label="Note Type" p:required="true">
                     <property name="optionsFinder">
                         <bean class="org.kuali.ole.deliver.keyvalue.OleNoteTypeKeyValues" />
                     </property>
@@ -1186,7 +1197,7 @@
                         <bean parent="Uif-DropdownControl" p:cssClasses="fixed-size-200-select"/>
                     </property>
                 </bean>
-                <bean id="patronNoteText" parent="OlePatron-InputField" p:propertyName="patronNoteText" p:label="Note Text" p:readOnly="@{!document.newMaintainableObject.dataObject.expirationFlag}">
+                <bean id="patronNoteText" parent="OlePatron-InputField" p:propertyName="patronNoteText" p:label="Note Text">
                     <property name="control">
                         <bean parent="Uif-LargeTextAreaControl" p:cssClasses="comments" p:watermarkText="size 800"/>
                     </property>
@@ -1344,7 +1355,7 @@
                     </property>
                 </bean>
                 <bean id="addressValidFrom" parent="OlePatron-InputField"
-                      p:propertyName="oleAddressBo.addressValidFrom" p:label="Valid From">
+                      p:propertyName="oleAddressBo.addressValidFrom" p:label="Begin Date">
                     <property name="control">
                         <bean parent="Uif-DateControl" p:size="15"/>
                     </property>
@@ -1362,7 +1373,7 @@
                     </property>
                 </bean>
                 <bean id="addressValidTo" parent="OlePatron-InputField"
-                      p:propertyName="oleAddressBo.addressValidTo" p:label="Valid To">
+                      p:propertyName="oleAddressBo.addressValidTo" p:label="End Date">
                     <property name="control">
                         <bean parent="Uif-DateControl" p:size="15"/>
                     </property>
@@ -1432,7 +1443,7 @@
                     </property>
                 </bean>
                 <bean id="olePhoneNumberSource" parent="OlePatron-InputField" p:propertyName="olePhoneBo.phoneSource"
-                      p:label="Phone Number Source" p:required="true" p:enableAutoDirectInquiry="false">
+                      p:label="Phone Number Source" p:enableAutoDirectInquiry="false">
                     <property name="optionsFinder">
                         <bean class="org.kuali.ole.deliver.keyvalue.OleAddressSourceKeyValue"/>
                     </property>
@@ -1508,7 +1519,7 @@
                     </property>
                 </bean>
                 <bean id="oleEmailAddressSource" parent="OlePatron-InputField" p:propertyName="oleEmailBo.emailSource"
-                      p:label="Email Address Source" p:required="true" p:enableAutoDirectInquiry="false">
+                      p:label="Email Address Source" p:enableAutoDirectInquiry="false">
                     <property name="optionsFinder">
                         <bean class="org.kuali.ole.deliver.keyvalue.OleAddressSourceKeyValue"/>
                     </property>
@@ -1928,6 +1939,123 @@
         </property>
     </bean>
 
+    <bean id="OlePatronDocument-userBlock-note-Section" parent="Uif-VerticalBoxSection" p:render="@{document.newMaintainableObject.dataObject.userNoteExists and document.newMaintainableObject.dataObject.generalBlockPatrn}">
+        <property name="items">
+            <list>
+                <bean parent="Uif-VerticalFieldGroup">
+                    <property name="items">
+                        <list>
+                            <ref bean="errorMessage_patronUserNote1"/>
+                            <ref bean="patronUserNoteDisplaySection1"/>
+                            <ref bean="patronBlockSection1"/>
+                            <ref bean="patronUserBlockButtonSection1"/>
+                        </list>
+                    </property>
+                </bean>
+            </list>
+        </property>
+    </bean>
+
+    <bean id="OlePatronDocument-user-note-Section" parent="Uif-VerticalBoxSection" p:render="@{document.newMaintainableObject.dataObject.userNoteExists and !(document.newMaintainableObject.dataObject.generalBlockPatrn)}">
+        <property name="items">
+            <list>
+                <bean parent="Uif-VerticalFieldGroup">
+                    <property name="items">
+                        <list>
+                            <ref bean="errorMessage_patronUserNote1"/>
+                            <ref bean="patronUserNoteDisplaySection1"/>
+                            <ref bean="patronUserNoteButtonSection1"/>
+                        </list>
+                    </property>
+                </bean>
+            </list>
+        </property>
+    </bean>
+
+    <bean id="OlePatronDocument-Block-Section" parent="Uif-VerticalBoxSection" p:render="@{!(document.newMaintainableObject.dataObject.userNoteExists) and document.newMaintainableObject.dataObject.generalBlockPatrn}">
+        <property name="items">
+            <list>
+                <bean parent="Uif-VerticalFieldGroup">
+                    <property name="items">
+                        <list>
+                            <ref bean="patronBlockSection1"/>
+                            <ref bean="patronBlockButtonSection1"/>
+                        </list>
+                    </property>
+                </bean>
+            </list>
+        </property>
+    </bean>
+
+    <bean id="errorMessage_patronUserNote1" parent="Uif-MessageField" p:messageText="Please select a patron user note to delete" p:hidden="true" p:cssClasses="alert-error" />
+
+    <bean id="patronUserNoteDisplaySection1" parent="Uif-TableCollectionSection">
+        <property name="collectionObjectClass" value="org.kuali.ole.deliver.bo.OlePatronNotes"/>
+        <property name="propertyName" value="olePatronUserNotes"/>
+        <property name="layoutManager.renderSequenceField" value="false"/>
+        <property name="renderAddLine" value="false"/>
+        <property name="layoutManager.richTable.render" value="true"/>
+        <property name="layoutManager.richTable.disableTableSort" value="true" />
+        <property name="renderLineActions" value="false"/>
+        <property name="layoutManager.richTable.templateOptions">
+            <map merge="true">
+                <entry key="bPaginate" value="true"/>
+                <entry key="sPaginationType" value="full_numbers"/>
+                <entry key="bFilter" value="false"/>
+                <entry key="bLengthChange" value="false"/>
+            </map>
+        </property>
+        <property name="items">
+            <list>
+                <bean id="patronUserNote-select1" parent="Loan-Uif-InputField" p:propertyName="selected" p:label="Select" p:width="3%" p:defaultValue="false">
+                    <property name="control">
+                        <bean parent="Uif-CheckboxControl" p:cssClasses="patronNotesCheckBoxClass" />
+                    </property>
+                </bean>
+                <bean id="patronUserNoteType1" parent="Uif-DataField" p:style="font-weight:bold;" p:propertyName="olePatronNoteType.patronNoteTypeCode" p:label="Patron User Note Type"/>
+                <bean id="patronUserNoteText1" parent="Uif-DataField" p:style="font-weight:bold;" p:propertyName="patronNoteText" p:label="Patron User Notes"/>
+            </list>
+        </property>
+    </bean>
+
+    <bean id="patronUserBlockButtonSection1" parent="Uif-HorizontalBoxSubSection">
+        <property name="items">
+            <list>
+                <bean id="patronUserBlockCloseBtn1" parent="Uif-SecondaryActionButton-Small"
+                      p:actionScript="closePatronUserNoteBlockDialog()"
+                      p:actionLabel="Close"/>
+            </list>
+        </property>
+    </bean>
+
+    <bean id="patronBlockButtonSection1" parent="Uif-HorizontalBoxSubSection">
+        <property name="items">
+            <list>
+                <bean id="patronBlockCloseBtn1" parent="Uif-SecondaryActionButton-Small"
+                      p:actionScript="closePatronBlockDialog()"
+                      p:actionLabel="Close"/>
+            </list>
+        </property>
+    </bean>
+
+    <bean id="patronUserNoteButtonSection1" parent="Uif-HorizontalBoxSubSection">
+        <property name="items">
+            <list>
+                <bean id="patronUserNoteCloseBtn1" parent="Uif-SecondaryActionButton-Small"
+                      p:actionScript="closePatronUserNoteDialog()"
+                      p:actionLabel="Close"/>
+            </list>
+        </property>
+    </bean>
+
+    <bean id="patronBlockSection1" parent="Uif-HorizontalBoxSubSection">
+        <property name="items">
+            <list>
+                <bean id="OlePatronDocument-Block-Message-Section" parent="Uif-MessageField" p:messageText="Patron is Blocked" />
+            </list>
+        </property>
+    </bean>
+
     <bean id="OlePatronDocument-LostBarcodeButtonSection" parent="Uif-HorizontalBoxSection">
         <property name="items">
             <list>
@@ -1986,6 +2114,19 @@
             <bean parent="Uif-HiddenControl"/>
         </property>
     </bean>
+
+    <bean id="showPatronUserNoteDialogBox" parent="OlePatron-InputField" p:propertyName="userNoteExists" p:hidden="true" >
+        <property name="control">
+            <bean parent="Uif-HiddenControl"/>
+        </property>
+    </bean>
+
+    <bean id="showPatronBlockDialogBox" parent="OlePatron-InputField" p:propertyName="generalBlockPatrn" p:hidden="true" >
+        <property name="control">
+            <bean parent="Uif-HiddenControl"/>
+        </property>
+    </bean>
+
     <bean id ="Refresh-OlePatronDocument-InvalidOrLostBarcodeSection" parent="Uif-SecondaryActionButton" p:methodToCall="refreshInvalidOrLostBarcodeSection" p:hidden="true" p:refreshId="OlePatronDocument-InvalidOrLostBarcodeSection"/>
 
     <bean id="OlePatronDocument-barcodeEditable" parent="OlePatron-InputField" p:propertyName="barcodeEditable" p:hidden="true" >

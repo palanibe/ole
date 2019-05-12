@@ -39,6 +39,7 @@ public class CircForm extends OLEForm {
     private boolean itemValidationDone;
     private boolean itemOverride;
     private boolean requestExistOrLoanedCheck;
+    private String cancelRequest;
 
     /*
     patronBarcode: Current Borrower
@@ -95,6 +96,7 @@ public class CircForm extends OLEForm {
     private String customDueDateTimeMessageForRenew;
 
     private boolean recordNoteForClaimsReturn;
+    private boolean itemFoundInLibrary;
     private boolean recordNoteForDamagedItem;
     private boolean recordNoteForMissingPiece;
 
@@ -105,6 +107,14 @@ public class CircForm extends OLEForm {
     private String urlBase;
     private String viewBillUrl;
     private String createBillUrl;
+
+    private Date loanDueDateToAllEntries;
+    private String loanTimeToAllEntries;
+
+    private String itemLostNote;
+    private String itemReplaceNote;
+
+    private String createNewPatronLink;
 
     public String getPageSize() {
         return pageSize;
@@ -165,6 +175,7 @@ public class CircForm extends OLEForm {
         this.damagedItemNote = null;
         this.missingPieceNote = null;
         this.missingPieceCount = null;
+        this.itemLostNote = null;
         this.numberOfPiece=null;
     }
 
@@ -185,6 +196,7 @@ public class CircForm extends OLEForm {
         this.claimsReturnNote = null;
         this.damagedItemNote = null;
         this.missingPieceNote = null;
+        this.itemLostNote = null;
         this.missingPieceCount = null;
         this.numberOfPiece=null;
     }
@@ -209,8 +221,10 @@ public class CircForm extends OLEForm {
         this.claimsReturnNote = null;
         this.damagedItemNote = null;
         this.missingPieceNote = null;
+        this.itemLostNote = null;
         this.missingPieceCount = null;
         this.numberOfPiece=null;
+        this.createNewPatronLink = null;
     }
 
     public OlePatronDocument getPatronDocument() {
@@ -553,5 +567,61 @@ public class CircForm extends OLEForm {
 
     public void setCreateBillUrl(String createBillUrl) {
         this.createBillUrl = createBillUrl;
+    }
+    
+    public String getCreateNewPatronLink() {
+        return createNewPatronLink;
+    }
+
+    public void setCreateNewPatronLink(String createNewPatronLink) {
+        this.createNewPatronLink = createNewPatronLink;
+    }
+
+    public String getItemLostNote() {
+        return itemLostNote;
+    }
+
+    public String getItemReplaceNote() {
+        return itemReplaceNote;
+    }
+
+    public void setItemReplaceNote(String itemReplaceNote) {
+        this.itemReplaceNote = itemReplaceNote;
+    }
+
+    public void setItemLostNote(String itemLostNote) {
+        this.itemLostNote = itemLostNote;
+    }
+
+    public Date getLoanDueDateToAllEntries() {
+        return loanDueDateToAllEntries;
+    }
+
+    public void setLoanDueDateToAllEntries(Date loanDueDateToAllEntries) {
+        this.loanDueDateToAllEntries = loanDueDateToAllEntries;
+    }
+
+    public String getLoanTimeToAllEntries() {
+        return loanTimeToAllEntries;
+    }
+
+    public void setLoanTimeToAllEntries(String loanTimeToAllEntries) {
+        this.loanTimeToAllEntries = loanTimeToAllEntries;
+    }
+
+    public boolean isItemFoundInLibrary() {
+        return itemFoundInLibrary;
+    }
+
+    public void setItemFoundInLibrary(boolean itemFoundInLibrary) {
+        this.itemFoundInLibrary = itemFoundInLibrary;
+    }
+
+    public String getCancelRequest() {
+        return cancelRequest;
+    }
+
+    public void setCancelRequest(String cancelRequest) {
+        this.cancelRequest = cancelRequest;
     }
 }

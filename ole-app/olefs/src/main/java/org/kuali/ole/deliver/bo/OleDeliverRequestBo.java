@@ -39,7 +39,7 @@ public class OleDeliverRequestBo extends PersistableBusinessObjectBase implement
     private String operatorModifiedId;
     private String machineId;
     private String circulationLocationId;
-    private Date createDate;
+    private Timestamp createDate;
     private Date modifiedDate;
     private Date requestExpiryDate;
     private Date onHoldNoticeSentDate;
@@ -73,6 +73,7 @@ public class OleDeliverRequestBo extends PersistableBusinessObjectBase implement
     private String circulationLocationCode;
     private String pickUpLocationCode;
     private String inTransitCheckInNote;
+    private Timestamp inTransitDate;
     private boolean requestFlag;
     private boolean claimsReturnedFlag;
     private String message;
@@ -100,6 +101,7 @@ public class OleDeliverRequestBo extends PersistableBusinessObjectBase implement
     private String itemLibrary;
     private String itemCollection;
     private String itemLocation;
+    private String itemTypeDesc;
     private String noticeType;
     private Date newDueDate;
     private Date originalDueDate;
@@ -124,11 +126,21 @@ public class OleDeliverRequestBo extends PersistableBusinessObjectBase implement
     private String recallNoticeContentConfigName;
     private String requestExpirationNoticeContentConfigName;
     private String OnHoldNoticeContentConfigName;
+    private String OnHoldCourtesyNoticeContentConfigName;
     private String OnHoldExpirationNoticeContentConfigName;
 
     private String requestNote;
-
+    private boolean select=false;
     private String callNumberPrefix;
+
+    public boolean isSelect() {
+        return select;
+    }
+
+    public void setSelect(boolean select) {
+        this.select = select;
+    }
+
     public String getItemInstitution() {
         return itemInstitution;
     }
@@ -163,6 +175,14 @@ public class OleDeliverRequestBo extends PersistableBusinessObjectBase implement
 
     public String getItemLocation() {
         return itemLocation;
+    }
+
+    public String getItemTypeDesc() {
+        return itemTypeDesc;
+    }
+
+    public void setItemTypeDesc(String itemTypeDesc) {
+        this.itemTypeDesc = itemTypeDesc;
     }
 
     public boolean isClaimsReturnedFlag() {
@@ -494,11 +514,11 @@ public class OleDeliverRequestBo extends PersistableBusinessObjectBase implement
             this.circulationLocationId = circulationLocationId;
     }
 
-    public Date getCreateDate() {
+    public Timestamp getCreateDate() {
         return createDate;
     }
 
-    public void setCreateDate(Date createDate) {
+    public void setCreateDate(Timestamp createDate) {
         this.createDate = createDate;
     }
 
@@ -591,7 +611,12 @@ public class OleDeliverRequestBo extends PersistableBusinessObjectBase implement
 
     public String getFirstName() {
         if (firstName == null && borrowerId != null && olePatron.getBarcode() != null && (borrowerId.equals(olePatron.getOlePatronId()))) {
-            return olePatron.getEntity().getNames().get(0).getFirstName();
+            firstName = olePatron.getEntity().getNames().get(0).getFirstName();
+        } else if(firstName == null && borrowerId != null && (olePatron.getBarcode() == null)) {
+            getOlePatron();
+            if(borrowerId.equals(olePatron.getOlePatronId())) {
+                firstName = olePatron.getEntity().getNames().get(0).getFirstName();
+            }
         }
         return firstName;
     }
@@ -602,7 +627,12 @@ public class OleDeliverRequestBo extends PersistableBusinessObjectBase implement
 
     public String getLastName() {
         if (lastName == null && borrowerId != null && olePatron.getBarcode() != null && (borrowerId.equals(olePatron.getOlePatronId()))) {
-            return olePatron.getEntity().getNames().get(0).getLastName();
+            lastName = olePatron.getEntity().getNames().get(0).getLastName();
+        } else if(lastName == null && borrowerId != null && (olePatron.getBarcode() == null)) {
+            getOlePatron();
+            if(borrowerId.equals(olePatron.getOlePatronId())) {
+                lastName = olePatron.getEntity().getNames().get(0).getLastName();
+            }
         }
         return lastName;
     }
@@ -1156,5 +1186,21 @@ public class OleDeliverRequestBo extends PersistableBusinessObjectBase implement
 
     public void setCallNumberPrefix(String callNumberPrefix) {
         this.callNumberPrefix = callNumberPrefix;
+    }
+
+    public Timestamp getInTransitDate() {
+        return inTransitDate;
+    }
+
+    public void setInTransitDate(Timestamp inTransitDate) {
+        this.inTransitDate = inTransitDate;
+    }
+
+    public String getOnHoldCourtesyNoticeContentConfigName() {
+        return OnHoldCourtesyNoticeContentConfigName;
+    }
+
+    public void setOnHoldCourtesyNoticeContentConfigName(String onHoldCourtesyNoticeContentConfigName) {
+        OnHoldCourtesyNoticeContentConfigName = onHoldCourtesyNoticeContentConfigName;
     }
 }

@@ -267,7 +267,7 @@
                 <bean id="emailAddress" parent="Uif-LookupCriteriaInputField" p:propertyName="emailAddress" />
                 <bean id="PatronSearch_phoneNumber" parent="Uif-LookupCriteriaInputField" p:propertyName="phoneNumber" p:label="Phone Number" />
                 <bean id="olePatronId" parent="Uif-LookupCriteriaInputField" p:propertyName="olePatronId" p:label="Patron Id" p:enableAutoDirectInquiry="false"/>
-                <bean id="activeIndicator" parent="Uif-LookupCriteriaInputField" p:propertyName="activeIndicator" p:defaultValue="Y"/>
+                <bean id="activeIndicator" parent="Uif-LookupCriteriaInputField" p:propertyName="activeIndicator"/>
             </list>
         </property>
         <property name="resultFields">
@@ -275,7 +275,7 @@
                 <!--<bean id="searchResult_olePatronId" parent="Uif-LinkField" p:href="inquiry?olePatronId=@{#line.olePatronId}&amp;methodToCall=start&amp;dataObjectClassName=org.kuali.ole.deliver.bo.OlePatronDocument&amp;dialogMode=true&amp;showHome=false&amp;showHistory=true" p:target="_blank" p:linkText="@{#line.olePatronId}" p:label="Patron Id"/>-->
                 <bean id="searchResult_olePatronId" parent="Uif-DataField" p:propertyName="olePatronId" p:label="Patron Id" />
                 <bean id="searchResult_namePrefix" parent="Uif-MessageField" p:messageText="@{#line.namePrefix}" p:width="1%" p:label="Name Prefix" />
-                <bean id="searchResult_firstName" parent="Uif-MessageField" p:messageText="@{#line.firstName}" p:label="First Name" />
+                <bean id="searchResult_firstName" parent="Uif-DataField" p:propertyName="firstName" p:label="First Name" />
                 <bean id="searchResult_middleName" parent="Uif-MessageField" p:messageText="@{#line.middleName}" p:label="Middle Name" />
                 <bean id="searchResult_lastName" parent="Uif-DataField" p:propertyName="lastName" p:label="Last Name" p:enableAutoInquiry="false" />
                 <bean id="searchResult_nameSuffix" parent="Uif-MessageField" p:messageText="@{#line.nameSuffix}" p:width="1%" p:label="Name Suffix" />
@@ -330,7 +330,7 @@
                 <ref bean="uif-Ole-CreateNewLink"/>
                 <bean parent="Uif-SecondaryActionButton" p:methodToCall="cancel" p:actionLabel="Cancel"
                       p:render="@{!#form.renderedInLightBox}"/>
-                <bean parent="Uif-SecondaryActionButton" p:actionLabel="Close" p:render="@{#form.renderedInLightBox}"
+                <bean parent="Uif-SecondaryActionButton" p:actionLabel="Cancel" p:render="@{#form.renderedInLightBox}"
                       p:onClickScript="e.preventDefault();closeLightbox();return false;"/>
             </list>
         </property>
@@ -694,8 +694,8 @@
                 <bean id="address_addressSource" parent="Uif-InputField" p:propertyName="oleAddressBo.oleAddressSourceName" p:label="Address Source"/>
                 <bean id="address_addressVerified" parent="Uif-InputField" p:propertyName="oleAddressBo.addressVerified" p:label="Address Verified"/>
                 <bean id="address_deliverAddress" parent="Uif-InputField" p:propertyName="oleAddressBo.deliverAddress" p:label="Deliver Address"/>
-                <bean id="address_addressValidFrom" parent="Uif-InputField" p:propertyName="oleAddressBo.addressValidFrom" p:label="Address Valid from"/>
-                <bean id="address_addressValidTo" parent="Uif-InputField" p:propertyName="oleAddressBo.addressValidTo" p:label="Address Valid To"/>
+                <bean id="address_addressValidFrom" parent="Uif-InputField" p:propertyName="oleAddressBo.addressValidFrom" p:label="Begin Date"/>
+                <bean id="address_addressValidTo" parent="Uif-InputField" p:propertyName="oleAddressBo.addressValidTo" p:label="End Date"/>
                 <bean id="address_defaultValue" parent="Uif-InputField" p:propertyName="entityAddressBo.defaultValue" p:label="Default"/>
                 <bean id="address_active" parent="Uif-InputField" p:propertyName="entityAddressBo.active" p:label="active" />
             </list>

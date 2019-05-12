@@ -58,6 +58,7 @@ public class EditorForm extends UifFormBase {
     private boolean fromDublin;
     private String recStatus;
     private boolean select;
+    private String recordOpenedTime;
     private boolean showLeftTree = false;
     private String locationValue;
     private Tree<DocumentTreeNode, String> DocTree = new Tree<DocumentTreeNode, String>();
@@ -137,6 +138,7 @@ public class EditorForm extends UifFormBase {
     private boolean canDelete;
     private boolean canAdd;
     private boolean canDeleteEInstance;
+    private boolean canCopyBib;
     private String holdingItem = "item";
     private String itemStatusSelection = "false";
     private String serialReceivingDocId;
@@ -483,6 +485,14 @@ public class EditorForm extends UifFormBase {
 
     public void setStaffOnlyFlagForItem(boolean staffOnlyFlagForItem) {
         this.staffOnlyFlagForItem = staffOnlyFlagForItem;
+    }
+
+    public String getRecordOpenedTime() {
+        return recordOpenedTime;
+    }
+
+    public void setRecordOpenedTime(String recordOpenedTime) {
+        this.recordOpenedTime = recordOpenedTime;
     }
 
     public List<WorkDublinEditorField> getExistingDublinFieldList() {
@@ -1273,5 +1283,13 @@ public class EditorForm extends UifFormBase {
 
     public void setSupressItemShelving(boolean supressItemShelving) {
         this.supressItemShelving = supressItemShelving;
+    }
+
+    public boolean isCanCopyBib() {
+        return canCopyBib;
+    }
+
+    public void setCanCopyBib(boolean canCopyBib) {
+        this.canCopyBib = canCopyBib;
     }
 }

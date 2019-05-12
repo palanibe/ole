@@ -79,6 +79,7 @@ public class PurapParameterConstants {
 
     public static final String AUTO_CLOSE_PO_FROM_DATE = "AUTO_CLOSE_PO_FROM_DATE";
     public static final String AUTO_CLOSE_PO_TO_DATE = "AUTO_CLOSE_PO_TO_DATE";
+    public static final String AUTO_CLOSE_PO_ORDER_TYPE = "AUTO_CLOSE_PO_ORDER_TYPE";
 
     public static final String ENABLE_SALES_TAX_IND = "ENABLE_SALES_TAX_IND";
 
@@ -108,6 +109,8 @@ public class PurapParameterConstants {
 
     public static final String RECEIVING_DOCUMENT_REQUIRED_IND = "RECEIVING_DOCUMENT_REQUIRED_IND";
     public static final String PAYMENT_REQUEST_POSITIVE_APPROVAL_IND = "PAYMENT_REQUEST_POSITIVE_APPROVAL_IND";
+
+    public static final String ALLOW_INVOICE_SUFF_FUND_CHECK = "ALLOW_INVOICE_SUFF_FUND_CHECK";
 
 
     public static class CapitalAsset {

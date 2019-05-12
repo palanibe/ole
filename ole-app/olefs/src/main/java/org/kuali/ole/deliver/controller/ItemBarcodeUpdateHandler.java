@@ -19,17 +19,15 @@ public class ItemBarcodeUpdateHandler {
 
     Map<String,String> itemBarcodeMap = new HashMap<String,String>();
 
-    public void updateItemBarcode(String oldBarcode, String newBarcode){
-        ItemRecord oleItemRecordByBarcode = ItemInfoUtil.getInstance().getItemRecordByBarcode(oldBarcode);
-        updateDeliverRequest(oleItemRecordByBarcode.getItemId(), newBarcode);
-        updateCirculationHistory(oleItemRecordByBarcode.getItemId(), newBarcode);
-        updateTemporaryCirculationHistory(oleItemRecordByBarcode.getItemId(), newBarcode);
-        updateLoanDocument(oleItemRecordByBarcode.getItemId(), newBarcode);
-        updateFeeType(oleItemRecordByBarcode.getItemId(), newBarcode);
-        updateReturnHistoryRecord(oleItemRecordByBarcode.getItemId(), newBarcode);
-        updateRenewalHistoryRecord(oleItemRecordByBarcode.getItemId(), newBarcode);
+    public void updateItemBarcode(String oldBarcode, String newBarcode,String itemId){
+        updateDeliverRequest(itemId, newBarcode);
+        updateCirculationHistory(itemId, newBarcode);
+        updateTemporaryCirculationHistory(itemId, newBarcode);
+        updateLoanDocument(itemId, newBarcode);
+        updateFeeType(itemId, newBarcode);
+        updateReturnHistoryRecord(itemId, newBarcode);
+        updateRenewalHistoryRecord(itemId, newBarcode);
         updateDeliverRequestHistoryRecord(oldBarcode, newBarcode);
-
     }
 
     public void updateDeliverRequest(String itemId, String newBarcode){
@@ -135,12 +133,12 @@ public class ItemBarcodeUpdateHandler {
 
     public void updateDeliverRequestHistoryRecord(String oleBarcode, String newBarcode){
         itemBarcodeMap.clear();
-        itemBarcodeMap.put("itemId",oleBarcode);
+        itemBarcodeMap.put("itemBarcode",oleBarcode);
         List<OleDeliverRequestHistoryRecord> oleDeliverRequestHistoryRecords = new ArrayList<OleDeliverRequestHistoryRecord>();
         List<OleDeliverRequestHistoryRecord> oleDeliverRequestHistoryRecordList = (List<OleDeliverRequestHistoryRecord>) KRADServiceLocator.getBusinessObjectService().findMatching(OleDeliverRequestHistoryRecord.class, itemBarcodeMap);
         if (CollectionUtils.isNotEmpty(oleDeliverRequestHistoryRecordList)) {
             for (OleDeliverRequestHistoryRecord deliverRequestHistoryRecord : oleDeliverRequestHistoryRecordList) {
-                deliverRequestHistoryRecord.setItemId(newBarcode);
+                deliverRequestHistoryRecord.setItemBarcode(newBarcode);
                 oleDeliverRequestHistoryRecords.add(deliverRequestHistoryRecord);
             }
             List<OleDeliverRequestHistoryRecord> oleDeliverRequestHistoryRecords1 = (List<OleDeliverRequestHistoryRecord>) KRADServiceLocator.getBusinessObjectService().save(oleDeliverRequestHistoryRecords);

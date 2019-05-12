@@ -56,7 +56,7 @@ public class OlePaymentRequestItem extends PaymentRequestItem {
     protected String itemForeignDiscountType;
     protected KualiDecimal itemForeignDiscountAmt;
     protected KualiDecimal itemForeignUnitCost;
-    protected KualiDecimal itemExchangeRate;
+    protected BigDecimal itemExchangeRate;
     protected KualiDecimal itemUnitCostUSD;
     protected KualiDecimal foreignCurrencyExtendedPrice;
     protected String localTitleId;
@@ -340,11 +340,11 @@ public class OlePaymentRequestItem extends PaymentRequestItem {
         this.itemForeignUnitCost = itemForeignUnitCost;
     }
 
-    public KualiDecimal getItemExchangeRate() {
+    public BigDecimal getItemExchangeRate() {
         return itemExchangeRate;
     }
 
-    public void setItemExchangeRate(KualiDecimal itemExchangeRate) {
+    public void setItemExchangeRate(BigDecimal itemExchangeRate) {
         this.itemExchangeRate = itemExchangeRate;
     }
 

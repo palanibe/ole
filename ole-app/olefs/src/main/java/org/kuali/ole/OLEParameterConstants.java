@@ -23,6 +23,8 @@ public class OLEParameterConstants {
     public static final String EXP_REQ_BODY = "EXP_REQ_BODY";
     public static final String EXP_REQ_TITLE = "EXP_REQ_TITLE";
     public static final String EXPIRED_TITLE = "EXPIRED_TITLE";
+    public static final String ONHOLD_COURTESY_TITLE= "ONHOLD_COURTESY_TITLE";
+    public static final String LOST_PROCESSING_FEE= "LOST_PROCESSING_FEE";
     public static final String ITEM_DIGIT_ROUTINE = "ITEM_DIGIT_ROUTINE";
     public static final String ITEM_DIGIT_ROUTINE_PATTERN = "ITEM_DIGIT_ROUTINE_PATTERN";
     public static final String ITEM_STATUS_READONLY = "ITEM_STATUS_READONLY";
@@ -40,7 +42,12 @@ public class OLEParameterConstants {
     public static final String NCIP_ACCEPT_ITEM_NOTICE_INDICATOR="NCIP_ACCEPT_ITEM_NOTICE_INDICATOR";
     public static final String DEFAULT_CIRCULATION_DESK = "DEFAULT_CIRCULATION_DESK";
     public static final String LOAN_WHILE_FASTADD = "LOAN_WHILE_FASTADD";
-
+    public static final String CLAIMS_RETURNED_NOTICE_TITLE = "CLAIMS_RETURNED_NOTICE_TITLE";
+    public static final String CLAIMS_RETURNED_FOUND_NO_FEES_NOTICE_TITLE = "CLAIMS_RETURNED_FOUND_NO_FEES_NOTICE_TITLE";
+    public static final String CLAIMS_RETURNED_FOUND_FINES_OWED_NOTICE_TITLE = "CLAIMS_RETURNED_FOUND_FINES_OWED_NOTICE_TITLE";
+    public static final String CLAIMS_RETURNED_NOT_FOUND_NOTICE_TITLE = "CLAIMS_RETURNED_NOT_FOUND_NOTICE_TITLE";
+    public static final String CLAIMS_RETURNED_NOT_FOUND_FINES_OWED_NOTICE_TITLE = "CLAIMS_RETURNED_NOT_FOUND_FINES_OWED_NOTICE_TITLE";
+    public static final String CLAIMS_RETURNED_NOT_FOUND_NO_FEES_NOTICE_TITLE = "CLAIMS_RETURNED_NOT_FOUND_NO_FEES_NOTICE_TITLE";
 
 
 }

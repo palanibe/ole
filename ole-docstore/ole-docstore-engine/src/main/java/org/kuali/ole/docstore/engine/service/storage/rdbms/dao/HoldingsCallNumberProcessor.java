@@ -60,11 +60,12 @@ public class HoldingsCallNumberProcessor implements Callable {
                             holdingsQuerylist.add(holdingsQuery.toString());
                         }
                     }
-                    String[] arraysqls = holdingsQuerylist.toArray(new String[holdingsQuerylist.size()]);
+
+                    if(holdingsQuerylist.toArray(new String[holdingsQuerylist.size()]).length > 0){
+                        jdbcTemplate.batchUpdate(holdingsQuerylist.toArray(new String[holdingsQuerylist.size()]));
+                    }
                     holdingsQuerylist.clear();
-                    jdbcTemplate.batchUpdate(arraysqls);
                     stopWatch.stop();
-                    LOG.debug("Time Taken " + arraysqls.length + " for holdings Migration :: " + stopWatch.prettyPrint());
                     return null;
                 }
             });

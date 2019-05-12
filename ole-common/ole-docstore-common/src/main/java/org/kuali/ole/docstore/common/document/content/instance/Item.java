@@ -5,6 +5,7 @@ import com.thoughtworks.xstream.annotations.XStreamAsAttribute;
 import com.thoughtworks.xstream.annotations.XStreamImplicit;
 
 import javax.xml.bind.annotation.*;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -131,7 +132,10 @@ import java.util.List;
     "itemClaimsReturnedRecords",
     "itemDamagedRecords",
     "missingPieceItemRecordList",
-    "originalDueDate"
+    "originalDueDate",
+    "dateUpdated",
+    "dateCreated"
+
 })
 @XStreamAlias("item")
 @XmlRootElement(name = "item")
@@ -222,12 +226,20 @@ public class Item {
     protected int numberOfRenew;
     @XmlElement(required = true)
     protected String checkOutDateTime;
+    @XmlElement(required = false)
+    protected String dateCreated;
+    @XmlElement(required = false)
+    protected String dateUpdated;
     @XmlAttribute
     @XStreamAsAttribute
     protected String analytic;
     @XmlAttribute
     @XStreamAsAttribute
     protected String resourceIdentifier;
+    @XmlTransient
+    protected String lastBorrower;
+    @XmlTransient
+    protected Timestamp lastCheckinDate;
 
     public String getLoanDueDate() {
         return loanDueDate;
@@ -235,6 +247,22 @@ public class Item {
 
     public void setLoanDueDate(String loanDueDate) {
         this.loanDueDate = loanDueDate;
+    }
+
+    public String getLastBorrower() {
+        return lastBorrower;
+    }
+
+    public void setLastBorrower(String lastBorrower) {
+        this.lastBorrower = lastBorrower;
+    }
+
+    public Timestamp getLastCheckinDate() {
+        return lastCheckinDate;
+    }
+
+    public void setLastCheckinDate(Timestamp lastCheckinDate) {
+        this.lastCheckinDate = lastCheckinDate;
     }
 
     protected NumberOfCirculations numberOfCirculations;
@@ -1255,5 +1283,21 @@ public class Item {
 
     public void setOriginalDueDate(String originalDueDate) {
         this.originalDueDate = originalDueDate;
+    }
+
+    public String getDateCreated() {
+        return dateCreated;
+    }
+
+    public void setDateCreated(String dateCreated) {
+        this.dateCreated = dateCreated;
+    }
+
+    public String getDateUpdated() {
+        return dateUpdated;
+    }
+
+    public void setDateUpdated(String dateUpdated) {
+        this.dateUpdated = dateUpdated;
     }
 }

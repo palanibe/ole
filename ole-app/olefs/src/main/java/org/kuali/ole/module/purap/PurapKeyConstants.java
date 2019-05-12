@@ -168,6 +168,7 @@ public class PurapKeyConstants {
     // Payment Request
     public static final String ERROR_PURCHASE_ORDER_NOT_EXIST = "error.invoice.purchaseOrder.notExist";
     public static final String ERROR_PURCHASE_ORDER_NOT_OPEN = "error.invoice.purchaseOrder.notOpen";
+    public static final String ERROR_PURCHASE_ORDER_NOT_FOUND = "error.invoice.purchaseOrder.notFound";
     public static final String ERROR_PURCHASE_ORDER_FINAL_VOID = "error.invoice.purchaseOrder.void";
     public static final String ERROR_PURCHASE_ORDER_PENDING_PRINT = "error.invoice.purchaseOrder.pending.print";
     public static final String ERROR_POS_NOT_OPEN = "error.invoice.pos.notOpen";
@@ -251,6 +252,7 @@ public class PurapKeyConstants {
     public static final String ERROR_ITEM_ACCOUNTING_LINE_ATLEAST_ONE_PERCENT_MISSING = "errors.item.accounting.atleast.one.percent.missing";
     public static final String ERROR_PURCHASE_ORDER_EXCEEDING_TOTAL_LIMIT = "errors.purchaseorder.exceedingTotalLimit";
     public static final String ERROR_ITEM_REQUIRED = "errors.item.required";
+    public static final String ERROR_NO_ACTIVE_ITEMS ="errors.no.active.items";
     public static final String ERROR_ITEM_TRADEIN_DISCOUNT_COEXISTENCE = "errors.purchaseOrderItems.TradeInAndDiscountCoexistence";
     public static final String ERROR_ITEM_BELOW_THE_LINE = "errors.item.belowTheLine";
     public static final String ERROR_ITEM_QUANTITY_NOT_ALLOWED = "errors.item.quantity.isNotAllowed";

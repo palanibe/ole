@@ -5,6 +5,7 @@ import org.kuali.ole.OLEConstants;
 import org.kuali.ole.deliver.bo.OLEDeliverNotice;
 import org.kuali.ole.deliver.bo.OleDeliverRequestBo;
 import org.kuali.ole.deliver.calendar.service.DateUtil;
+import org.kuali.ole.deliver.notice.bo.OleNoticeContentConfigurationBo;
 import org.kuali.ole.deliver.notice.service.OleNoticeService;
 import org.kuali.ole.deliver.notice.util.NoticeUtil;
 import org.kuali.ole.deliver.service.OleLoanDocumentDaoOjb;
@@ -60,15 +61,20 @@ public class OleNoticeServiceImpl implements OleNoticeService {
         }
         if (noticeType.equalsIgnoreCase(OLEConstants.RECALL_NOTICE)){
             oleDeliverNotice.setNoticeContentConfigName(oleDeliverRequestBo.getRecallNoticeContentConfigName());
+            oleDeliverNotice.setLoanId(oleDeliverRequestBo.getLoanTransactionRecordNumber());
         }
         else if (noticeType.equalsIgnoreCase(OLEConstants.REQUEST_EXPIRATION_NOTICE)){
             oleDeliverNotice.setNoticeContentConfigName(oleDeliverRequestBo.getRequestExpirationNoticeContentConfigName());
         }
         else if (noticeType.equalsIgnoreCase(OLEConstants.ONHOLD_EXPIRATION_NOTICE)){
+            oleDeliverNotice.setNoticeSendType(getNoticeUtil().getParameter(OLEConstants.HOLD_COUR_NOT_TYP));
             oleDeliverNotice.setNoticeContentConfigName(oleDeliverRequestBo.getOnHoldExpirationNoticeContentConfigName());
         }
         else if (noticeType.equalsIgnoreCase(OLEConstants.ONHOLD_NOTICE)){
             oleDeliverNotice.setNoticeContentConfigName(oleDeliverRequestBo.getOnHoldNoticeContentConfigName());
+        }
+        else if (noticeType.equalsIgnoreCase(OLEConstants.ONHOLD_COURTESY_NOTICE)){
+            oleDeliverNotice.setNoticeContentConfigName(oleDeliverRequestBo.getOnHoldCourtesyNoticeContentConfigName());
         }
         oleDeliverNotice.setItemBarcode(oleDeliverRequestBo.getItemId());
         oleDeliverNotice.setNoticeType(noticeType);
@@ -78,6 +84,7 @@ public class OleNoticeServiceImpl implements OleNoticeService {
     @Override
     public OleDeliverRequestBo processNoticeForRequest(OleDeliverRequestBo oleDeliverRequestBo) {
         List<OLEDeliverNotice> oleDeliverNotices = new ArrayList<OLEDeliverNotice>();
+        if(oleDeliverRequestBo.getDeliverNotices() ==null || (oleDeliverRequestBo.getDeliverNotices()!=null && oleDeliverRequestBo.getDeliverNotices().size()==0)){
         OLEDeliverNotice requestExpirationDeliverNotice = createNotice(oleDeliverRequestBo,OLEConstants.REQUEST_EXPIRATION_NOTICE,new java.sql.Timestamp(oleDeliverRequestBo.getRequestExpiryDate().getTime()));
         oleDeliverNotices.add(requestExpirationDeliverNotice);
         OleLoanDocumentDaoOjb oleLoanDocumentDaoOjb = (OleLoanDocumentDaoOjb) SpringContext.getService("oleLoanDao");
@@ -96,10 +103,13 @@ public class OleNoticeServiceImpl implements OleNoticeService {
         if(requestTypeIds.contains(oleDeliverRequestBo.getRequestTypeId())){
         OLEDeliverNotice onHoldDeliverNotice = createNotice(oleDeliverRequestBo,OLEConstants.ONHOLD_NOTICE,null);
         OLEDeliverNotice onHoldExpiryDeliverNotice = createNotice(oleDeliverRequestBo,OLEConstants.ONHOLD_EXPIRATION_NOTICE,null);
+        OLEDeliverNotice onHoldCourtestDeliverNotice = createNotice(oleDeliverRequestBo,OLEConstants.ONHOLD_COURTESY_NOTICE,null);
         oleDeliverNotices.add(onHoldDeliverNotice);
         oleDeliverNotices.add(onHoldExpiryDeliverNotice);
+        oleDeliverNotices.add(onHoldCourtestDeliverNotice);
         }
         oleDeliverRequestBo.setDeliverNotices(oleDeliverNotices);
+        }
         return oleDeliverRequestBo;
     }
 
@@ -124,6 +134,9 @@ public class OleNoticeServiceImpl implements OleNoticeService {
                                     oleDeliverNotice1.setNoticeToBeSendDate(DateUtil.addDays(new Timestamp(System.currentTimeMillis()), Integer.parseInt(oleDeliverNotice.getOleDeliverRequestBo().getOlePickUpLocation().getOnHoldDays())));
                                 }
                                 oleDeliverNoticeList.add(oleDeliverNotice1);
+                            }else if(oleDeliverNotice1.getNoticeType().equals(OLEConstants.ONHOLD_COURTESY_NOTICE)){
+                                oleDeliverNotice1.setNoticeToBeSendDate(new Timestamp(System.currentTimeMillis()));
+                                oleDeliverNoticeList.add(oleDeliverNotice1);
                             }
                         }
                     }
@@ -133,7 +146,18 @@ public class OleNoticeServiceImpl implements OleNoticeService {
         getBusinessObjectService().save(oleDeliverNoticeList);
     }
 
-
+    @Override
+    public String getNoticeSubjectForNoticeType(String noticeName){
+        String noticeSubject=null;
+        Map<String,String> noticeMap=new HashMap<>();
+        noticeMap.put("noticeType",noticeName);
+        List<OleNoticeContentConfigurationBo> noticeContentConfigurationBoList=(List<OleNoticeContentConfigurationBo>)getBusinessObjectService().findMatching(OleNoticeContentConfigurationBo.class,noticeMap);
+        if(noticeContentConfigurationBoList.size()>0) {
+            OleNoticeContentConfigurationBo noticeContentConfigurationBo = noticeContentConfigurationBoList.get(0);
+            noticeSubject=(noticeContentConfigurationBo.getNoticeSubjectLine()!=null?noticeContentConfigurationBo.getNoticeSubjectLine():null);
+        }
+        return noticeSubject;
+    }
 
 }
 

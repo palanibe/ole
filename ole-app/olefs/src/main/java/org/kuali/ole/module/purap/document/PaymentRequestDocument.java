@@ -737,12 +737,15 @@ public class PaymentRequestDocument extends AccountsPayableDocumentBase {
                         updateAndSaveAppDocStatus(PaymentRequestStatuses.APPDOC_DO_NOT_EXTRACT);
                     }
 
-                    PurchaseOrderDocument purchaseOrderDocument = this.getPurchaseOrderDocument();
+                    /*PurchaseOrderDocument purchaseOrderDocument = this.getPurchaseOrderDocument();
+                    if(purchaseOrderDocument.getOrderType() == null) {
+
+                    }
                     if (purchaseOrderDocument.getOrderType().getPurchaseOrderType().equals(OLEConstants.ORD_TYPE_FIRM_FIX) || purchaseOrderDocument.getOrderType().getPurchaseOrderType().equals(OLEConstants.APPROVAL) || purchaseOrderDocument.getOrderType().getPurchaseOrderType().equals(OLEConstants.FIRM_MUL_PART)) {
                         DocumentHeader paymentRequestDocumentHeader = this.getDocumentHeader();
                         closePurchaseOrder();
                         this.setDocumentHeader(paymentRequestDocumentHeader);
-                    }
+                    }*/
                 }
             }
             // DOCUMENT DISAPPROVED
@@ -1171,10 +1174,10 @@ public class PaymentRequestDocument extends AccountsPayableDocumentBase {
         if (nodeName.equals(PurapWorkflowConstants.REQUIRES_IMAGE_ATTACHMENT)) {
             return requiresAccountsPayableReviewRouting();
         }
-        if (nodeName.equals(PurapWorkflowConstants.PURCHASE_WAS_RECEIVED)) {
+        else if (nodeName.equals(PurapWorkflowConstants.PURCHASE_WAS_RECEIVED)) {
             return shouldWaitForReceiving();
         }
-        if (nodeName.equals(PurapWorkflowConstants.VENDOR_IS_EMPLOYEE_OR_NON_RESIDENT_ALIEN)) {
+        else if (nodeName.equals(PurapWorkflowConstants.VENDOR_IS_EMPLOYEE_OR_NON_RESIDENT_ALIEN)) {
             return isVendorEmployeeOrNonResidentAlien();
         }
         throw new UnsupportedOperationException("Cannot answer split question for this node you call \"" + nodeName + "\"");

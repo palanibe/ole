@@ -41,6 +41,7 @@ import org.kuali.ole.module.purap.document.service.PurapService;
 import org.kuali.ole.module.purap.document.validation.event.AttributedContinuePurapEvent;
 import org.kuali.ole.module.purap.service.PurapAccountingService;
 import org.kuali.ole.module.purap.util.ExpiredOrClosedAccountEntry;
+import org.kuali.ole.module.purap.util.PurApItemUtils;
 import org.kuali.ole.module.purap.util.SummaryAccount;
 import org.kuali.ole.select.OleSelectConstant;
 import org.kuali.ole.select.bo.OLELinkPurapDonor;
@@ -180,6 +181,7 @@ public class OleInvoiceDocument extends InvoiceDocument implements Copyable {
         return blanketApproveFlag;
     }
     private boolean currencyTypeIndicator = true;
+    private boolean addImmediately;
 
     public void setBlanketApproveFlag(boolean blanketApproveFlag) {
         this.blanketApproveFlag = blanketApproveFlag;
@@ -1000,21 +1002,26 @@ public class OleInvoiceDocument extends InvoiceDocument implements Copyable {
                 if (StringUtils.isNotBlank(this.getInvoiceCurrencyExchangeRate())) {
                     try {
                         //          Double.parseDouble(this.getInvoiceCurrencyExchangeRate());
-                        items.setItemExchangeRate(new KualiDecimal(this.getInvoiceCurrencyExchangeRate()));
+                        items.setItemExchangeRate(new BigDecimal(this.getInvoiceCurrencyExchangeRate()));
                         items.setExchangeRate(this.getInvoiceCurrencyExchangeRate());
                     }
                     catch (NumberFormatException nfe) {
                         throw new RuntimeException("Invalid Exchange Rate", nfe);
                     }
                 }   else {
-                    items.setItemExchangeRate(new KualiDecimal(exchangeRate));
+                    items.setItemExchangeRate(exchangeRate);
                     items.setExchangeRate(exchangeRate.toString());
                 }
                 if (items.getItemExchangeRate() != null && items.getItemForeignUnitCost() != null   && !this.getApplicationDocumentStatus().equals("Department-Approved")) {
-                    items.setItemUnitCostUSD(new KualiDecimal(items.getItemForeignUnitCost().bigDecimalValue().divide(new BigDecimal(items.getExchangeRate()), 4, BigDecimal.ROUND_HALF_UP)));
-                    items.setItemUnitPrice(items.getItemForeignUnitCost().bigDecimalValue().divide(new BigDecimal(items.getExchangeRate()), 4, BigDecimal.ROUND_HALF_UP));
-                    items.setItemListPrice(items.getItemUnitCostUSD());
-                    items.setExtendedPrice(items.calculateExtendedPrice());
+                    if(!items.getItemForeignUnitCost().equals(new KualiDecimal("0.00"))) {
+                        items.setItemUnitCostUSD(new KualiDecimal(items.getItemForeignUnitCost().bigDecimalValue().divide(new BigDecimal(items.getExchangeRate()), 4, BigDecimal.ROUND_HALF_UP)));
+                        items.setItemUnitPrice(items.getItemForeignUnitCost().bigDecimalValue().divide(new BigDecimal(items.getExchangeRate()), 4, BigDecimal.ROUND_HALF_UP));
+                        items.setItemListPrice(items.getItemUnitCostUSD());
+                        items.setExtendedPrice(items.calculateExtendedPrice());
+                    }
+                    else  {
+                        items.setExtendedPrice(items.calculateExtendedPrice());
+                    }
                 }
                 //this.setForeignVendorInvoiceAmount(this.getVendorInvoiceAmount().bigDecimalValue().multiply(tempOleExchangeRate.getExchangeRate()));
             }
@@ -1310,7 +1317,7 @@ public class OleInvoiceDocument extends InvoiceDocument implements Copyable {
                                 if (StringUtils.isNotBlank(this.getInvoiceCurrencyExchangeRate())) {
                                     try {
                                         Double.parseDouble(this.getInvoiceCurrencyExchangeRate());
-                                        singleItem.setItemExchangeRate(new KualiDecimal(this.getInvoiceCurrencyExchangeRate()));
+                                        singleItem.setItemExchangeRate(new BigDecimal(this.getInvoiceCurrencyExchangeRate()));
                                         singleItem.setExchangeRate(this.getInvoiceCurrencyExchangeRate());
                                     }
                                     catch (NumberFormatException nfe) {
@@ -1319,7 +1326,7 @@ public class OleInvoiceDocument extends InvoiceDocument implements Copyable {
                                 }   else {
                                     BigDecimal exchangeRate = SpringContext.getBean(OleInvoiceService.class).getExchangeRate(this.getInvoiceCurrencyType()).getExchangeRate();
                                     this.setInvoiceCurrencyExchangeRate(exchangeRate.toString());
-                                    singleItem.setItemExchangeRate(new KualiDecimal(exchangeRate));
+                                    singleItem.setItemExchangeRate(exchangeRate);
                                     singleItem.setExchangeRate(exchangeRate.toString());
                                 }
                                 this.setVendorInvoiceAmount(this.getForeignVendorInvoiceAmount() != null ?
@@ -1552,7 +1559,11 @@ public class OleInvoiceDocument extends InvoiceDocument implements Copyable {
             return hasPaymentMethod();
         }
         if (nodeName.equals(PurapWorkflowConstants.BUDGET_REVIEW_REQUIRED)) {
-            return isBudgetReviewRequired();
+            if (SpringContext.getBean(OleInvoiceService.class).getParameterBoolean(OLEConstants.CoreModuleNamespaces.SELECT, OLEConstants.OperationType.SELECT, PurapParameterConstants.ALLOW_INVOICE_SUFF_FUND_CHECK)) {
+                return isBudgetReviewRequired();
+            } else {
+                return Boolean.FALSE;
+            }
         }
         if (nodeName.equals(PurapWorkflowConstants.REQUIRES_IMAGE_ATTACHMENT)) {
             return requiresAccountsPayableReviewRouting();
@@ -1568,7 +1579,11 @@ public class OleInvoiceDocument extends InvoiceDocument implements Copyable {
         }
 
         if (nodeName.equals(PurapWorkflowConstants.NOTIFY_BUDGET_REVIEW)) {
-            return isNotificationRequired();
+            if (SpringContext.getBean(OleInvoiceService.class).getParameterBoolean(OLEConstants.CoreModuleNamespaces.SELECT, OLEConstants.OperationType.SELECT, PurapParameterConstants.ALLOW_INVOICE_SUFF_FUND_CHECK)) {
+                return isNotificationRequired();
+            } else {
+                return Boolean.FALSE;
+            }
         }
         throw new UnsupportedOperationException("Cannot answer split question for this node you call \"" + nodeName + "\"");
     }
@@ -1663,28 +1678,29 @@ public class OleInvoiceDocument extends InvoiceDocument implements Copyable {
             return false;
         }
         // if document's fiscal year is less than or equal to the current fiscal year
-        if (SpringContext.getBean(UniversityDateService.class).getCurrentFiscalYear().compareTo(getPostingYear()) >= 0) {
-            List<SourceAccountingLine> sourceAccountingLineList = this.getSourceAccountingLines();
-            for (SourceAccountingLine accLine : sourceAccountingLineList) {
-                String chart = accLine.getAccount().getChartOfAccountsCode();
-                String account = accLine.getAccount().getAccountNumber();
-                String sfCode = accLine.getAccount().getAccountSufficientFundsCode();
-                Map<String, Object> key = new HashMap<String, Object>();
-                key.put(OLEPropertyConstants.CHART_OF_ACCOUNTS_CODE, chart);
-                key.put(OLEPropertyConstants.ACCOUNT_NUMBER, account);
-                OleSufficientFundCheck oleSufficientFundCheck = businessObjectService.findByPrimaryKey(
-                        OleSufficientFundCheck.class, key);
+        if (SpringContext.getBean(OleInvoiceService.class).getParameterBoolean(OLEConstants.CoreModuleNamespaces.SELECT, OLEConstants.OperationType.SELECT, PurapParameterConstants.ALLOW_INVOICE_SUFF_FUND_CHECK)) {
+            if (SpringContext.getBean(UniversityDateService.class).getCurrentFiscalYear().compareTo(getPostingYear()) >= 0) {
+                List<SourceAccountingLine> sourceAccountingLineList = this.getSourceAccountingLines();
+                for (SourceAccountingLine accLine : sourceAccountingLineList) {
+                    String chart = accLine.getAccount().getChartOfAccountsCode();
+                    String account = accLine.getAccount().getAccountNumber();
+                    String sfCode = accLine.getAccount().getAccountSufficientFundsCode();
+                    Map<String, Object> key = new HashMap<String, Object>();
+                    key.put(OLEPropertyConstants.CHART_OF_ACCOUNTS_CODE, chart);
+                    key.put(OLEPropertyConstants.ACCOUNT_NUMBER, account);
+                    OleSufficientFundCheck oleSufficientFundCheck = businessObjectService.findByPrimaryKey(
+                            OleSufficientFundCheck.class, key);
                /* List<GeneralLedgerPendingEntry> pendingEntries = getPendingLedgerEntriesForSufficientFundsChecking();
                 for (GeneralLedgerPendingEntry glpe : pendingEntries) {
                     glpe.getChartOfAccountsCode();
                 }*/
-                SpringContext.getBean(GeneralLedgerPendingEntryService.class).generateGeneralLedgerPendingEntries(this);
+               /* SpringContext.getBean(GeneralLedgerPendingEntryService.class).generateGeneralLedgerPendingEntries(this);
                 SpringContext.getBean(BusinessObjectService.class).save(getGeneralLedgerPendingEntries());
-
-                if (oleSufficientFundCheck != null) {
-                    String option = oleSufficientFundCheck.getNotificationOption() != null ? oleSufficientFundCheck
-                            .getNotificationOption() : "";
-                    if (option.equals(OLEPropertyConstants.BUD_REVIEW)) {
+*/
+                    if (oleSufficientFundCheck != null) {
+                        String option = oleSufficientFundCheck.getNotificationOption() != null ? oleSufficientFundCheck
+                                .getNotificationOption() : "";
+                        if (option.equals(OLEPropertyConstants.BUD_REVIEW)) {
                         /*List<GeneralLedgerPendingEntry> pendingEntries = getPendingLedgerEntriesForSufficientFundsChecking();
                         for (GeneralLedgerPendingEntry glpe : pendingEntries) {
                             glpe.getChartOfAccountsCode();
@@ -1692,15 +1708,16 @@ public class OleInvoiceDocument extends InvoiceDocument implements Copyable {
                         SpringContext.getBean(GeneralLedgerPendingEntryService.class).generateGeneralLedgerPendingEntries(this);
                         SpringContext.getBean(BusinessObjectService.class).save(getGeneralLedgerPendingEntries());*/
 
-                        required = oleInvoiceFundCheckServiceImpl.hasSufficientFundCheckRequired(accLine);
-                        SpringContext.getBean(GeneralLedgerPendingEntryService.class).delete(getDocumentNumber());
+                            required = oleInvoiceFundCheckServiceImpl.hasSufficientFundCheckRequired(accLine);
+                      /*  SpringContext.getBean(GeneralLedgerPendingEntryService.class).delete(getDocumentNumber());*/
 /*                        SpringContext.getBean(GeneralLedgerPendingEntryService.class).delete(getDocumentNumber());*/
-                        return required;
+                            return required;
+                        }
                     }
                 }
             }
         }
-        SpringContext.getBean(GeneralLedgerPendingEntryService.class).delete(getDocumentNumber());
+      //  SpringContext.getBean(GeneralLedgerPendingEntryService.class).delete(getDocumentNumber());
         /*SpringContext.getBean(GeneralLedgerPendingEntryService.class).delete(getDocumentNumber());*/
         return required;
         // get list of sufficientfundItems
@@ -1731,28 +1748,33 @@ public class OleInvoiceDocument extends InvoiceDocument implements Copyable {
         if ((SpringContext.getBean(OleInvoiceService.class).getPaymentMethodType(this.getPaymentMethodIdentifier())).equals(OLEConstants.DEPOSIT)) {
             return false;
         }
-        List<SourceAccountingLine> sourceAccountingLineList = this.getSourceAccountingLines();
-        boolean sufficientFundCheck = false;
-        for (SourceAccountingLine accLine : sourceAccountingLineList) {
+        if (SpringContext.getBean(OleInvoiceService.class).getParameterBoolean(OLEConstants.CoreModuleNamespaces.SELECT, OLEConstants.OperationType.SELECT, PurapParameterConstants.ALLOW_INVOICE_SUFF_FUND_CHECK)) {
             Map searchMap = new HashMap();
             String notificationOption = null;
             Map<String, Object> key = new HashMap<String, Object>();
-            String chartCode = accLine.getChartOfAccountsCode();
-            String accNo = accLine.getAccountNumber();
-            String objectCd = accLine.getFinancialObjectCode();
-            key.put(OLEPropertyConstants.CHART_OF_ACCOUNTS_CODE, chartCode);
-            key.put(OLEPropertyConstants.ACCOUNT_NUMBER, accNo);
-            OleSufficientFundCheck account = SpringContext.getBean(BusinessObjectService.class).findByPrimaryKey(
-                    OleSufficientFundCheck.class, key);
-            if (account != null) {
-                notificationOption = account.getNotificationOption();
+            List<SourceAccountingLine> sourceAccountingLineList = this.getSourceAccountingLines();
+            boolean sufficientFundCheck = false;
+            for (SourceAccountingLine accLine : sourceAccountingLineList) {
+                String chartCode = accLine.getChartOfAccountsCode();
+                String accNo = accLine.getAccountNumber();
+                key.put(OLEPropertyConstants.CHART_OF_ACCOUNTS_CODE, chartCode);
+                key.put(OLEPropertyConstants.ACCOUNT_NUMBER, accNo);
+                OleSufficientFundCheck account = SpringContext.getBean(BusinessObjectService.class).findByPrimaryKey(
+                        OleSufficientFundCheck.class, key);
+                if (account != null) {
+                    notificationOption = account.getNotificationOption();
+                }
+                if (notificationOption != null && notificationOption.equals(OLEPropertyConstants.NOTIFICATION)) {
+                    sufficientFundCheck = oleInvoiceFundCheckServiceImpl.hasSufficientFundCheckRequired(accLine);
+                    return sufficientFundCheck;
+                }
+                searchMap.clear();
             }
-            if (notificationOption != null && notificationOption.equals(OLEPropertyConstants.NOTIFICATION)) {
-                sufficientFundCheck = oleInvoiceFundCheckServiceImpl.hasSufficientFundCheckRequired(accLine);
-                return sufficientFundCheck;
-            }
+            return sufficientFundCheck;
         }
-        return sufficientFundCheck;
+        else {
+            return false;
+        }
     }
 
     @Override
@@ -1768,7 +1790,7 @@ public class OleInvoiceDocument extends InvoiceDocument implements Copyable {
             if (nodeName != null
                     && (nodeName.equalsIgnoreCase(PurapWorkflowConstants.BUDGET_NODE) || nodeName
                     .equalsIgnoreCase(PurapWorkflowConstants.BUDGET_REVIEW_REQUIRED))) {
-                if (SpringContext.getBean(UniversityDateService.class).getCurrentFiscalYear()
+                /*if (SpringContext.getBean(UniversityDateService.class).getCurrentFiscalYear()
                         .compareTo(getPostingYear()) >= 0) {
 
                     SpringContext.getBean(GeneralLedgerPendingEntryService.class).generateGeneralLedgerPendingEntries(
@@ -1782,32 +1804,32 @@ public class OleInvoiceDocument extends InvoiceDocument implements Copyable {
 
                     fundsItems = SpringContext.getBean(SufficientFundsService.class).checkSufficientFundsForInvoice(pendingEntries);
 
-/*
+*//*
                     SpringContext.getBean(GeneralLedgerPendingEntryService.class).generateGeneralLedgerPendingEntries(
                             this);
                     SpringContext.getBean(BusinessObjectService.class).save(getGeneralLedgerPendingEntries());
 
                     fundsItems = SpringContext.getBean(SufficientFundsService.class).checkSufficientFundsForInvoice(
                             pendingEntries);
-*/
+*//*
 
-                }
+                }*/
                 SpringContext.getBean(PurapAccountingService.class).updateAccountAmounts(this);
                 if (accountsForRouting == null) {
                     accountsForRouting = (SpringContext.getBean(PurapAccountingService.class).generateSummary(getItems()));
                 }
-                String documentFiscalYearString = this.getPostingYear().toString();
+                /*String documentFiscalYearString = this.getPostingYear().toString();
                 List<String> fundsItemList = new ArrayList<String>();
                 for (SufficientFundsItem fundsItem : fundsItems) {
                     fundsItemList.add(fundsItem.getAccount().getChartOfAccountsCode());
-                }
+                }*/
                 if (accountsForRouting != null) {
-                    for (Iterator accountsForRoutingIter = accountsForRouting.iterator(); accountsForRoutingIter.hasNext(); ) {
+                    /*for (Iterator accountsForRoutingIter = accountsForRouting.iterator(); accountsForRoutingIter.hasNext(); ) {
                         if (!(fundsItemList.contains(((SourceAccountingLine) accountsForRoutingIter.next())
                                 .getChartOfAccountsCode()))) {
                             accountsForRoutingIter.remove();
                         }
-                    }
+                    }*/
 
 /*                SpringContext.getBean(GeneralLedgerPendingEntryService.class).delete(getDocumentNumber());*/
                     setAccountsForRouting(accountsForRouting);
@@ -2470,7 +2492,7 @@ public class OleInvoiceDocument extends InvoiceDocument implements Copyable {
         this.setNotesAndAttachmentFlag(getOleInvoiceService().canCollapse(OLEConstants.NOTES_AND_ATTACH_SECTION, collapseSections));
         // Clear related views
         this.setAccountsPayablePurchasingDocumentLinkIdentifier(null);
-        this.setRelatedViews(null);
+       // this.setRelatedViews(null);
         this.setInvoiceNumber("");
         this.setNoteLine1Text("");
 
@@ -2810,5 +2832,41 @@ public class OleInvoiceDocument extends InvoiceDocument implements Copyable {
 
     public void setCurrencyFormat(String currencyFormat) {
         this.currencyFormat = currencyFormat;
+    }
+
+    public boolean isAddImmediately() {
+        return addImmediately;
+    }
+
+    public void setAddImmediately(boolean addImmediately) {
+        this.addImmediately = addImmediately;
+    }
+
+    @Override
+    public KualiDecimal getTotalDollarAmount() {
+        // return total without inactive and with below the line
+        return getTotalDollarAmount(false, true);
+    }
+
+    public KualiDecimal getTotalDollarAmount(boolean includeInactive, boolean includeBelowTheLine) {
+        KualiDecimal total = new KualiDecimal(BigDecimal.ZERO);
+        for (OleInvoiceItem item : (List<OleInvoiceItem>) getItems()) {
+
+            if (item.getPurapDocument() == null) {
+                item.setPurapDocument(this);
+            }
+            ItemType it = item.getItemType();
+            if ((includeBelowTheLine) && (includeInactive || PurApItemUtils.checkItemActive(item))) {
+                KualiDecimal totalAmount = item.getTotalAmount();
+                KualiDecimal itemTotal = (totalAmount != null) ? totalAmount : KualiDecimal.ZERO;
+                if(item.isDebitItem()) {
+                    total = total.add(itemTotal);
+                }
+                else {
+                    total = total.subtract(itemTotal);
+                }
+            }
+        }
+        return total;
     }
 }

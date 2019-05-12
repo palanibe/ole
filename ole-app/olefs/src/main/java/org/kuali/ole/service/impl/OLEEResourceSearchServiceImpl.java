@@ -3647,10 +3647,10 @@ public class OLEEResourceSearchServiceImpl implements OLEEResourceSearchService 
             Iterator iterator = exchangeRateList.iterator();
             if (iterator.hasNext()) {
                 OleExchangeRate tempOleExchangeRate = (OleExchangeRate) iterator.next();
-                item.setItemExchangeRate(new KualiDecimal(tempOleExchangeRate.getExchangeRate()));
+                item.setItemExchangeRate(tempOleExchangeRate.getExchangeRate());
             }
             if (item.getItemExchangeRate() != null && item.getItemForeignUnitCost() != null) {
-                item.setItemUnitCostUSD(new KualiDecimal(item.getItemForeignUnitCost().bigDecimalValue().divide(item.getItemExchangeRate().bigDecimalValue(), 4, RoundingMode.HALF_UP)));
+                item.setItemUnitCostUSD(new KualiDecimal(item.getItemForeignUnitCost().bigDecimalValue().divide(item.getItemExchangeRate(), 4, RoundingMode.HALF_UP)));
                 item.setItemUnitPrice(item.getItemUnitCostUSD().bigDecimalValue());
                 item.setItemListPrice(item.getItemUnitCostUSD());
             }
@@ -4000,7 +4000,7 @@ public class OLEEResourceSearchServiceImpl implements OLEEResourceSearchService 
                     eResourcePO.setTitle(oleeResourceRecordDocument.getTitle());
                     eResourcePO.setGokbId(oleeResourceRecordDocument.getGokbId());
                     eResourcePO.setIsbnNIssn(oleeResourceRecordDocument.getIsbn());
-                    eResourcePO.setPrice(oleeResourceRecordDocument.getEstimatedPrice());
+                    eResourcePO.setPrice(oleCreatePO.getPrice());
                     eResourcePO.setVendorId(oleCreatePO.getVendorId());
                     eResourcePO.setOrderTypeId(oleCreatePO.getOrderTypeId().toString());
                     eResourcePO.setOleERSIdentifier(oleeResourceRecordDocument.getOleERSIdentifier());

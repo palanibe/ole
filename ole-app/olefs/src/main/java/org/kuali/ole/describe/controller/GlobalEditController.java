@@ -1,5 +1,6 @@
 package org.kuali.ole.describe.controller;
 
+import com.google.common.collect.Lists;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -153,7 +154,7 @@ public class GlobalEditController extends OLESearchController {
             List<SearchResultDisplayRow> searchResultDisplayRows = globalEditForm.getOriginalSearchResultDisplayRowList();
             int end = Integer.parseInt(globalEditForm.getPageNumber()) * globalEditForm.getPageSize();
             searchParams.setStartIndex(start);
-            if (searchResultDisplayRows.size() >= start) {
+            if (searchResultDisplayRows !=null && searchResultDisplayRows.size() >= start) {
                 if (searchResultDisplayRows.size() > end) {
                     globalEditForm.setSearchResultDisplayRowList(searchResultDisplayRows.subList(globalEditForm.getStart(), end));
                 } else {
@@ -161,7 +162,11 @@ public class GlobalEditController extends OLESearchController {
                 }
 
             }
-
+            if(globalEditForm.getSearchConditions().size()>0){
+                searchDocstoreData(globalEditForm, request);
+            }else{
+                loadPageSearch(globalEditForm,start);
+            }
         } catch (NumberFormatException e) {
             LOG.warn("Invalid page number " + globalEditForm.getPageNumber(), e);
         }
@@ -190,8 +195,14 @@ public class GlobalEditController extends OLESearchController {
             }
             int start = Math.max(0, lastPage);
             searchParams.setStartIndex(start);
-            globalEditForm.setSearchResultDisplayRowList(searchResultDisplayRows.subList(start, searchResultDisplayRows.size()));
-
+            if(searchResultDisplayRows!=null){
+                globalEditForm.setSearchResultDisplayRowList(searchResultDisplayRows.subList(start, searchResultDisplayRows.size()));
+            }
+            if(globalEditForm.getSearchConditions().size()>0) {
+                searchDocstoreData(globalEditForm, request);
+            }else {
+                loadPageSearch(globalEditForm,start);
+            }
 
         } catch (NumberFormatException e) {
             LOG.warn("Invalid page number " + globalEditForm.getPageNumber(), e);
@@ -211,8 +222,30 @@ public class GlobalEditController extends OLESearchController {
             GlobalVariables.getMessageMap().putError(KRADConstants.GLOBAL_ERRORS, OLEConstants.ERROR_AUTHORIZATION);
             return super.navigate(globalEditForm, result, request, response);
         }
-        searchDocstoreData(globalEditForm, request);
+        if(globalEditForm.getSearchConditions().size()>0){
+            searchDocstoreData(globalEditForm, request);
+        } else {
+            loadSearch(globalEditForm);
+        }
         return super.navigate(globalEditForm, result, request, response);
+    }
+
+    private void loadSearch(GlobalEditForm globalEditForm){
+        if(globalEditForm.getPageSize() <= globalEditForm.getOriginalSearchResultDisplayRowList().size()) {
+            globalEditForm.setSearchResultDisplayRowList(globalEditForm.getOriginalSearchResultDisplayRowList().subList(0, globalEditForm.getPageSize()));
+        } else {
+            globalEditForm.setSearchResultDisplayRowList(globalEditForm.getOriginalSearchResultDisplayRowList());
+        }
+        globalEditForm.setPageNumber("1");
+        globalEditForm.getSearchParams().setStartIndex(0);
+    }
+
+    private void loadPageSearch(GlobalEditForm globalEditForm,int start){
+        int end = start+globalEditForm.getPageSize();
+        if(end>globalEditForm.getOriginalSearchResultDisplayRowList().size()){
+            end =globalEditForm.getOriginalSearchResultDisplayRowList().size();
+        }
+        globalEditForm.setSearchResultDisplayRowList(globalEditForm.getOriginalSearchResultDisplayRowList().subList(start,end));
     }
 
     @RequestMapping(params = "methodToCall=load")
@@ -250,37 +283,42 @@ public class GlobalEditController extends OLESearchController {
             SearchParams searchParams = null;
             List<SearchCondition> searchConditions = null;
             String docType = globalEditForm.getDocType();
-            searchConditions = new ArrayList<>();
-            searchParams = new SearchParams();
-            for (String id : inputData) {
-                if (StringUtils.isNotEmpty(id)) {
-                    if (globalEditForm.getFieldType().equalsIgnoreCase("Barcode")) {
-                        if (DocType.HOLDINGS.getCode().equals(globalEditForm.getDocType())) {
-                            searchConditions.add(searchParams.buildSearchCondition("NONE", searchParams.buildSearchField("item", "ItemBarcode_display", id), "OR"));
+            List<List<String>> partition = Lists.partition(inputData, 100);
+            for (Iterator<List<String>> iterator = partition.iterator(); iterator.hasNext(); ) {
+                List<String> idLists = iterator.next();
+                searchConditions = new ArrayList<>();
+                searchParams = new SearchParams();
+                for (String id : idLists) {
+                    if (StringUtils.isNotEmpty(id)) {
+                        if (globalEditForm.getFieldType().equalsIgnoreCase("Barcode")) {
+                            if (DocType.HOLDINGS.getCode().equals(globalEditForm.getDocType())) {
+                                searchConditions.add(searchParams.buildSearchCondition("NONE", searchParams.buildSearchField("item", "ItemBarcode_display", id), "OR"));
+                            } else {
+                                searchConditions.add(searchParams.buildSearchCondition("NONE", searchParams.buildSearchField(docType, "ItemBarcode_display", id), "OR"));
+                            }
                         } else {
-                            searchConditions.add(searchParams.buildSearchCondition("NONE", searchParams.buildSearchField(docType, "ItemBarcode_display", id), "OR"));
+                            searchConditions.add(searchParams.buildSearchCondition("NONE", searchParams.buildSearchField(globalEditForm.getDocType(), "LocalId_display", id), "OR"));
                         }
-                    } else {
-                        searchConditions.add(searchParams.buildSearchCondition("NONE", searchParams.buildSearchField(globalEditForm.getDocType(), "LocalId_display", id), "OR"));
                     }
                 }
-            }
-            if (globalEditForm.getFieldType() != null && globalEditForm.getFieldType().equalsIgnoreCase("Barcode") && DocType.HOLDINGS.getCode().equals(globalEditForm.getDocType())) {
-                searchParams.getSearchConditions().addAll(searchConditions);
-                searchResultDisplayRows = getSearchResults(searchParams, globalEditForm);
-                Set<String> holdingsIdList = new HashSet();
-                for (SearchResultDisplayRow searchResultDisplayRow : searchResultDisplayRows) {
-                    holdingsIdList.add(searchResultDisplayRow.getHoldingsIdentifier());
+                if (globalEditForm.getFieldType() != null && globalEditForm.getFieldType().equalsIgnoreCase("Barcode") && DocType.HOLDINGS.getCode().equals(globalEditForm.getDocType())) {
+                    searchParams.getSearchConditions().addAll(searchConditions);
+                    searchResultDisplayRows.addAll(getSearchResults(searchParams, globalEditForm));
+                    Set<String> holdingsIdList = new HashSet();
+                    for (SearchResultDisplayRow searchResultDisplayRow : searchResultDisplayRows) {
+                        holdingsIdList.add(searchResultDisplayRow.getHoldingsIdentifier());
+                    }
+                    for (String id : holdingsIdList) {
+                        searchConditions.add(searchParams.buildSearchCondition("NONE", searchParams.buildSearchField(docType, "LocalId_display", id), "OR"));
+                    }
+                    searchParams.getSearchConditions().addAll(searchConditions);
+                    searchResultDisplayRows.addAll(getSearchResults(searchParams, globalEditForm));
                 }
-                for (String id : holdingsIdList) {
-                    searchConditions.add(searchParams.buildSearchCondition("NONE", searchParams.buildSearchField(docType, "LocalId_display", id), "OR"));
-                }
-                searchParams.getSearchConditions().addAll(searchConditions);
-                searchResultDisplayRows = getSearchResults(searchParams, globalEditForm);
-            }
 
-            searchParams.getSearchConditions().addAll(searchConditions);
-            searchResultDisplayRows = getSearchResults(searchParams, globalEditForm);
+                searchParams.getSearchConditions().addAll(searchConditions);
+                searchResultDisplayRows.addAll(getSearchResults(searchParams, globalEditForm));
+            }
+            globalEditForm.setTotalRecordCount(searchResultDisplayRows.size());
         }
         List<String> listFromDB = new ArrayList<>();
         //List<String> matchedList = new ArrayList<>();
@@ -420,6 +458,10 @@ public class GlobalEditController extends OLESearchController {
             for (SearchResultDisplayRow searchResultDisplayRow : globalEditForm.getGlobalEditRecords()) {
                 searchResultDisplayRow.setSelect(false);
             }
+            globalEditForm.setTotalRecordCount(globalEditForm.getGlobalEditRecords().size());
+            globalEditForm.setPageSize(globalEditForm.getGlobalEditRecords().size());
+            globalEditForm.setPageNumber("1");
+            globalEditForm.getSearchParams().setStartIndex(0);
         }
 
         return navigate(globalEditForm, result, request, response);

@@ -49,11 +49,23 @@ public class OleOverDueNotice {
 
     }
 
+    public void generateHoldExpirationNotice() {
+        LOG.debug("Start of scheduled job to execute generateHoldExpirationNotice.");
+        try {
+            oleDeliverRequestDocumentHelperService = getOleDeliverRequestDocumentHelperService();
+            oleDeliverRequestDocumentHelperService.generateHoldExpirationNotice();
+
+        } catch (Exception ex) {
+            LOG.error("Exception occurred while performing generateHoldExpirationNotice", ex);
+        }
+
+    }
+
     public void generateHoldCourtesyNotice() {
         LOG.debug("Start of scheduled job to execute generateHoldCourtesyNotice.");
         try {
             oleDeliverRequestDocumentHelperService = getOleDeliverRequestDocumentHelperService();
-            oleDeliverRequestDocumentHelperService.generateHoldCourtesyNotice();
+            oleDeliverRequestDocumentHelperService.generateOnHoldCourtesyNotice();
 
         } catch (Exception ex) {
             LOG.error("Exception occurred while performing generateHoldCourtesyNotice", ex);
@@ -154,10 +166,52 @@ public class OleOverDueNotice {
         }
     }
 
+    public void deleteLoanNoticeHistory() {
+        LOG.debug("Start of scheduled job to execute deleteLoanNoticeHistory.");
+        try {
+            oleDeliverRequestDocumentHelperService = getOleDeliverRequestDocumentHelperService();
+            oleDeliverRequestDocumentHelperService.deleteLoanNoticeHistoryRecord();
 
+        } catch (Exception ex) {
+            LOG.error("Exception occurred while performing deleteLoanNoticeHistory", ex);
+        }
 
+    }
 
+    public void deleteRenewalHistory() {
+        LOG.debug("Start of scheduled job to execute deleteRenewalHistory.");
+        try {
+            oleDeliverRequestDocumentHelperService = getOleDeliverRequestDocumentHelperService();
+            oleDeliverRequestDocumentHelperService.deleteRenewalHistoryRecord();
 
+        } catch (Exception ex) {
+            LOG.error("Exception occurred while performing deleteRenewalHistory", ex);
+        }
 
+    }
+
+    public void deleteReturnHistory() {
+        LOG.debug("Start of scheduled job to execute deleteReturnHistory.");
+        try {
+            oleDeliverRequestDocumentHelperService = getOleDeliverRequestDocumentHelperService();
+            oleDeliverRequestDocumentHelperService.deleteReturnHistoryRecord();
+
+        } catch (Exception ex) {
+            LOG.error("Exception occurred while performing deleteReturnHistory", ex);
+        }
+
+    }
+
+    public void deleteRequestHistory() {
+        LOG.debug("Start of scheduled job to execute deleteRequestHistory.");
+        try {
+            oleDeliverRequestDocumentHelperService = getOleDeliverRequestDocumentHelperService();
+            oleDeliverRequestDocumentHelperService.deleteRequestHistoryRecord();
+
+        } catch (Exception ex) {
+            LOG.error("Exception occurred while performing deleteReturnHistory", ex);
+        }
+
+    }
 
 }

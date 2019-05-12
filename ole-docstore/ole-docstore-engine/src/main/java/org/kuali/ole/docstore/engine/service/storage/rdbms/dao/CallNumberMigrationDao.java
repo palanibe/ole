@@ -9,10 +9,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
 import org.springframework.util.StopWatch;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -38,7 +36,7 @@ public class CallNumberMigrationDao extends PlatformAwareDaoBaseJdbc {
     }
 
     private void getHoldingsTotalCount() {
-        SqlRowSet totalCountSet = getJdbcTemplate().queryForRowSet("SELECT count(HOLDINGS_ID) as total FROM OLE_DS_HOLDINGS_T");
+        SqlRowSet totalCountSet = getJdbcTemplate().queryForRowSet("SELECT MAX(HOLDINGS_ID) as total FROM OLE_DS_HOLDINGS_T");
         while (totalCountSet.next()) {
             holdingsTotalCount = totalCountSet.getInt("total");
         }
@@ -46,7 +44,7 @@ public class CallNumberMigrationDao extends PlatformAwareDaoBaseJdbc {
 
 
     private void getItemTotalCount() {
-        SqlRowSet totalCountSet = getJdbcTemplate().queryForRowSet("SELECT count(ITEM_ID) as total FROM OLE_DS_ITEM_T");
+        SqlRowSet totalCountSet = getJdbcTemplate().queryForRowSet("SELECT MAX(ITEM_ID)  as total FROM OLE_DS_ITEM_T");
         while (totalCountSet.next()) {
             itemTotalCount = totalCountSet.getInt("total");
         }
@@ -79,9 +77,19 @@ public class CallNumberMigrationDao extends PlatformAwareDaoBaseJdbc {
             futures.add(executorService.submit(new HoldingsCallNumberProcessor(start, end, callNumberType, getJdbcTemplate())));
             start = end;
         }
+
+        for (Iterator<Future> iterator = futures.iterator(); iterator.hasNext(); ) {
+            Future future = iterator.next();
+            try {
+                future.get();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
         executorService.shutdown();
         stopWatch.stop();
-        LOG.debug("Time Taken "+ holdingsTotalCount + " for holdings Migration :: " +stopWatch.prettyPrint());
+        LOG.info("Time Taken for " + holdingsTotalCount + "  holdings Call Number Migration :: " + stopWatch.prettyPrint());
     }
 
 
@@ -91,9 +99,9 @@ public class CallNumberMigrationDao extends PlatformAwareDaoBaseJdbc {
         int tempItemRecord = itemTotalCount;
         StopWatch stopWatch = new StopWatch();
         List<Future> futures = new ArrayList<>();
-        ExecutorService executorService = Executors.newFixedThreadPool(10);
+        ExecutorService executorService = Executors.newFixedThreadPool(1);
         stopWatch.start();
-
+        chunkSize = 100000;
         while (start < holdingsTotalCount) {
             tempItemRecord = tempItemRecord - chunkSize;
             if (tempItemRecord < chunkSize) {
@@ -104,9 +112,19 @@ public class CallNumberMigrationDao extends PlatformAwareDaoBaseJdbc {
             futures.add(executorService.submit(new ItemCallNumberProcessor(start, end, callNumberType, getJdbcTemplate())));
             start = end;
         }
+
+
+        for (Iterator<Future> iterator = futures.iterator(); iterator.hasNext(); ) {
+            Future future = iterator.next();
+            try {
+                future.get();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
         executorService.shutdown();
         stopWatch.stop();
-        LOG.error("Time Taken " + itemTotalCount + " for Item Migration :: " + stopWatch.prettyPrint());
+        LOG.info("Time Taken for " + itemTotalCount + "  Items Call Number Migration :: " + stopWatch.prettyPrint());
     }
 
 

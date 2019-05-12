@@ -1,5 +1,6 @@
 package org.kuali.ole.service.impl;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.kuali.ole.DocumentUniqueIDPrefix;
 import org.kuali.ole.OLEConstants;
@@ -15,6 +16,7 @@ import org.kuali.ole.docstore.common.search.SearchResponse;
 import org.kuali.ole.docstore.common.search.SearchResult;
 import org.kuali.ole.docstore.common.search.SearchResultField;
 import org.kuali.ole.docstore.discovery.model.SearchCondition;
+import org.kuali.ole.docstore.engine.service.storage.rdbms.pojo.HoldingsRecord;
 import org.kuali.ole.docstore.model.enums.DocCategory;
 import org.kuali.ole.docstore.model.enums.DocFormat;
 import org.kuali.ole.pojo.OLESerialReceivingRecord;
@@ -89,20 +91,27 @@ public class SerialReceivingSearchServiceImpl implements SerialReceivingSearchSe
         return searchResponse;
     }
 
-    public SearchResponse searchDataFromDocstore(int startIndex, int searchLimit, Set<String> instance_Ids, String title, String issn, String localIdentifier,String sortingOrder) {
+    public SearchResponse searchDataFromDocstore(int startIndex, int searchLimit, Set<String> instance_Ids, HashMap<String,String> criteriaMap,String sortingOrder) {
         SearchResponse searchResponse = new SearchResponse();
         org.kuali.ole.docstore.common.search.SearchParams searchParam = new org.kuali.ole.docstore.common.search.SearchParams();
         searchParam.setStartIndex(startIndex);
         searchParam.setPageSize(searchLimit);
+        String title=criteriaMap.get(OLEConstants.TITLE);
+        String issn=criteriaMap.get(OLEConstants.ISSN);
+        String localIdentifier=criteriaMap.get(OLEConstants.LOCAL_IDENTIFIER);
+        String journalTitle=criteriaMap.get(OLEConstants.JOURNAL_TITLE_SEARCH);
         if (!title.isEmpty()) {
-            searchParam.getSearchConditions().add(searchParam.buildSearchCondition("AND", searchParam.buildSearchField(DocType.HOLDINGS.getCode(), Bib.TITLE, title), "AND"));
+            searchParam.getSearchConditions().add(searchParam.buildSearchCondition("AND", searchParam.buildSearchField(DocType.BIB.getCode(), Bib.TITLE, title), "AND"));
         }
         if (!issn.isEmpty()) {
             searchParam.getSearchConditions().add(searchParam.buildSearchCondition("AND", searchParam.buildSearchField(DocType.HOLDINGS.getCode(), Bib.ISSN, issn), "AND"));
         }
         if (!localIdentifier.isEmpty()) {
-            searchParam.getSearchConditions().add(searchParam.buildSearchCondition("", searchParam.buildSearchField(DocType.HOLDINGS.getCode(), OLEConstants.LOCALID_SEARCH, localIdentifier), "AND"));
+            searchParam.getSearchConditions().add(searchParam.buildSearchCondition("", searchParam.buildSearchField(DocType.BIB.getCode(), OLEConstants.LOCALID_SEARCH, localIdentifier), "AND"));
 
+        }
+        if (!journalTitle.isEmpty()) {
+            searchParam.getSearchConditions().add(searchParam.buildSearchCondition("AND", searchParam.buildSearchField(DocType.BIB.getCode(), OLEConstants.JOURNAL_TITLE_SEARCH, journalTitle), "AND"));
         }
         if (instance_Ids != null && instance_Ids.size() > 0) {
             for (String instanceId : instance_Ids) {
@@ -173,7 +182,10 @@ public class SerialReceivingSearchServiceImpl implements SerialReceivingSearchSe
                 }
             }
         }
-        List<OLESerialReceivingDocument> oleSerialReceivingDocument = (List<OLESerialReceivingDocument>) getBusinessObjectService().findMatching(OLESerialReceivingDocument.class, instanceValue);
+        List<OLESerialReceivingDocument> oleSerialReceivingDocument = new ArrayList<>();
+        if(instanceValue.size()!=0){
+            oleSerialReceivingDocument = (List<OLESerialReceivingDocument>) getBusinessObjectService().findMatching(OLESerialReceivingDocument.class, instanceValue);
+        }
         if (oleSerialReceivingDocument.isEmpty()) {
             oleSerialReceivingRecord.setAction(OLEConstants.SERIAL_SEARCH_CREATE_NEW);
             oleSerialReceivingRecord.setHref("serialReceiving?viewId=OLESerialReceivingView&amp;methodToCall=docHandler&amp;command=initiate&amp;bibId=" + oleSerialReceivingRecord.getBibId() + "&amp;instanceId=" + oleSerialReceivingRecord.getInstanceId());
@@ -273,4 +285,88 @@ public class SerialReceivingSearchServiceImpl implements SerialReceivingSearchSe
         return oleSerialReceivingDocuments;
     }
 
-}
+    public HoldingsRecord getHoldings(String holdingsIdenfier){
+        Map holdingsValue = new HashMap();
+        holdingsValue.put("holdingsId",holdingsIdenfier.replace("who-",""));
+        HoldingsRecord holdingsRecord = new HoldingsRecord();
+        holdingsRecord =  (HoldingsRecord)getBusinessObjectService().findByPrimaryKey(HoldingsRecord.class, holdingsValue);
+        return holdingsRecord ;
+    }
+
+    public List<OLESerialReceivingRecord> getOleSerialReceivingListFromHoldings(SearchResult searchResult){
+        List<OLESerialReceivingRecord> oleSerialReceivingRecordList = new ArrayList<>();
+        HoldingsRecord holdingsRecord = new HoldingsRecord();
+        Map instanceValue = new HashMap();
+        if (searchResult.getSearchResultFields() != null && searchResult.getSearchResultFields().size() > 0) {
+            for (SearchResultField searchResultField : searchResult.getSearchResultFields()) {
+                OLESerialReceivingRecord oleSerialReceivingRecord = new OLESerialReceivingRecord();
+                if (searchResultField.getDocType().equalsIgnoreCase("holdings") && searchResultField.getFieldName().equalsIgnoreCase("id") && searchResultField.getFieldValue() != null && !searchResultField.getFieldValue().isEmpty()) {
+                    oleSerialReceivingRecord.setInstanceId(searchResultField.getFieldValue());
+                    holdingsRecord = getHoldings(searchResultField.getFieldValue());
+                    instanceValue.put(OLEConstants.INSTANCE_ID, searchResultField.getFieldValue());
+                    if (StringUtils.isNotBlank(holdingsRecord.getCallNumber())) {
+                        oleSerialReceivingRecord.setCallNumber(holdingsRecord.getCallNumber());
+                    }
+                    if (StringUtils.isNotBlank(holdingsRecord.getLocation())) {
+                        oleSerialReceivingRecord.setBoundLocation(holdingsRecord.getLocation());
+                    }
+                    if (StringUtils.isNotBlank(holdingsRecord.getBibId())) {
+                        oleSerialReceivingRecord.setBibId(holdingsRecord.getBibId());
+                    }
+                    for (SearchResultField searchResultField1 : searchResult.getSearchResultFields()) {
+                        if (searchResultField1.getDocType().equalsIgnoreCase("bibliographic") && searchResultField1.getFieldName().equalsIgnoreCase("Title_sort") && searchResultField1.getFieldValue() != null && !searchResultField1.getFieldValue().isEmpty()) {
+                            if(oleSerialReceivingRecord.getTitle()==null){
+                                oleSerialReceivingRecord.setTitle(searchResultField1.getFieldValue());
+                            }
+                        }
+                        if (searchResultField1.getDocType().equalsIgnoreCase("bibliographic") && searchResultField1.getFieldName().equalsIgnoreCase("staffOnlyFlag") && searchResultField1.getFieldValue() != null && !searchResultField1.getFieldValue().isEmpty() && searchResultField1.getFieldValue().equalsIgnoreCase("true")) {
+                            oleSerialReceivingRecord.setStaffOnlyFlag(OLEConstants.STAFF_ONLY_COLOR);
+                            oleSerialReceivingRecord.setStaffOnlyFlagStyle(OLEConstants.STAFF_ONLY_STYLE);
+                        } else {
+                            oleSerialReceivingRecord.setStaffOnlyFlag(OLEConstants.NON_STAFF_ONLY_COLOR);
+                            oleSerialReceivingRecord.setStaffOnlyFlagStyle(OLEConstants.NON_STAFF_ONLY_STYLE);
+                        }
+                        if (searchResultField1.getDocType().equalsIgnoreCase("bibliographic") && searchResultField1.getFieldName().equalsIgnoreCase(Bib.ISSN) && searchResultField1.getFieldValue() != null && !searchResultField1.getFieldValue().isEmpty()) {
+                            if(oleSerialReceivingRecord.getIssn()==null){
+                                oleSerialReceivingRecord.setIssn(searchResultField1.getFieldValue());
+                            }
+                        }
+                    }
+
+
+                    if(instanceValue.size()!=0){
+                        List<OLESerialReceivingDocument> oleSerialReceivingDocument = (List<OLESerialReceivingDocument>) getBusinessObjectService().findMatching(OLESerialReceivingDocument.class, instanceValue);
+
+                        if (oleSerialReceivingDocument.isEmpty()) {
+                            oleSerialReceivingRecord.setAction(OLEConstants.SERIAL_SEARCH_CREATE_NEW);
+                            oleSerialReceivingRecord.setHref("serialReceiving?viewId=OLESerialReceivingView&amp;methodToCall=docHandler&amp;command=initiate&amp;bibId=" + oleSerialReceivingRecord.getBibId() + "&amp;instanceId=" + oleSerialReceivingRecord.getInstanceId());
+                        } else {
+                            for (OLESerialReceivingDocument oleSerialReceiving_Document : oleSerialReceivingDocument) {
+                                if (!oleSerialReceiving_Document.isActive()) {
+                                    oleSerialReceivingRecord.setAction(OLEConstants.SERIAL_SEARCH_CREATE_NEW);
+                                    oleSerialReceivingRecord.setHref("serialReceiving?viewId=OLESerialReceivingView&amp;methodToCall=docHandler&amp;command=initiate&amp;bibId=" + oleSerialReceivingRecord.getBibId() + "&amp;instanceId=" + oleSerialReceivingRecord.getInstanceId());
+                                } else {
+                                    oleSerialReceivingRecord.setAction(OLEConstants.SERIAL_SEARCH_SHOW_RECORD);
+                                    oleSerialReceivingRecord.setHref("serialReceiving?viewId=OLESerialReceivingView&amp;methodToCall=docHandler&amp;docId=" + oleSerialReceiving_Document.getDocumentNumber() + "&amp;command=displayDocSearchView&amp;bibId=" + oleSerialReceiving_Document.getBibId() + "&amp;instanceId=" + oleSerialReceiving_Document.getInstanceId());
+                                    oleSerialReceivingRecord.setCheckInWorkUnit(oleSerialReceiving_Document.getSerialReceiptLocation());
+                                    oleSerialReceivingRecord.setUnboundLocation(oleSerialReceiving_Document.getUnboundLocation());
+                                    Map<String, String> subscriptionStatusMap = new HashMap<String, String>();
+                                    subscriptionStatusMap.put("receiptStatusCode", oleSerialReceiving_Document.getSubscriptionStatus());
+                                    List<OleReceiptStatus> oleReceiptStatuses = (List<OleReceiptStatus>) getBusinessObjectService().findMatching(OleReceiptStatus.class, subscriptionStatusMap);
+                                    oleSerialReceivingRecord.setSubscriptionStatus(oleReceiptStatuses != null && oleReceiptStatuses.size() > 0 ? oleReceiptStatuses.get(0).getReceiptStatusName() : "");
+                                    break;
+                                }
+                            }
+                        }
+                        oleSerialReceivingRecordList.add(oleSerialReceivingRecord);
+                    }
+                }
+
+            }
+
+        }
+        return oleSerialReceivingRecordList;
+
+    }
+
+   }

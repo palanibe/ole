@@ -17,6 +17,7 @@
 package org.kuali.ole.module.purap.document;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.ojb.broker.query.QueryByCriteria;
 import org.kuali.ole.coa.businessobject.Account;
 import org.kuali.ole.gl.service.SufficientFundsService;
 import org.kuali.ole.integration.purap.CapitalAssetSystem;
@@ -50,6 +51,7 @@ import org.kuali.rice.core.api.datetime.DateTimeService;
 import org.kuali.rice.core.api.parameter.ParameterEvaluatorService;
 import org.kuali.rice.core.api.resourceloader.GlobalResourceLoader;
 import org.kuali.rice.core.api.util.type.KualiDecimal;
+import org.apache.ojb.broker.query.Criteria;
 import org.kuali.rice.coreservice.framework.parameter.ParameterService;
 import org.kuali.rice.kew.api.KewApiServiceLocator;
 import org.kuali.rice.kew.api.WorkflowDocument;
@@ -74,6 +76,7 @@ import org.kuali.rice.krad.util.GlobalVariables;
 import org.kuali.rice.krad.util.NoteType;
 import org.kuali.rice.krad.util.ObjectUtils;
 import org.kuali.rice.krad.workflow.service.WorkflowDocumentService;
+import org.springmodules.orm.ojb.PersistenceBrokerTemplate;
 
 import java.math.BigDecimal;
 import java.sql.Date;
@@ -596,13 +599,12 @@ public class PurchaseOrderDocument extends PurchasingDocumentBase implements Mul
     public List<String> getWorkflowEngineDocumentIdsToLock() {
         List<String> docIdStrings = new ArrayList<String>();
         docIdStrings.add(getDocumentNumber());
+        List<PurchaseOrderDocument> poList = SpringContext.getBean(PurchaseOrderDao.class).getPurchaseOrderIdByRelatedDocId(accountsPayablePurchasingDocumentLinkIdentifier);
         String currentDocumentTypeName = this.getDocumentHeader().getWorkflowDocument().getDocumentTypeName();
-
-        List<PurchaseOrderView> relatedPoViews = getRelatedViews().getRelatedPurchaseOrderViews();
-        for (PurchaseOrderView poView : relatedPoViews) {
+        for (PurchaseOrderDocument po : poList) {
             //don't lock related PO's if this is a split PO that's in process
             if (!(PurapConstants.PurchaseOrderStatuses.APPDOC_IN_PROCESS.equals(this.getApplicationDocumentStatus()) && PurapConstants.PurchaseOrderDocTypes.PURCHASE_ORDER_SPLIT_DOCUMENT.equals(currentDocumentTypeName))) {
-                docIdStrings.add(poView.getDocumentNumber());
+                docIdStrings.add(po.getDocumentNumber());
             }
         }
 
@@ -1417,7 +1419,7 @@ public class PurchaseOrderDocument extends PurchasingDocumentBase implements Mul
                 }
             }// endfor
         }
-        if (getRelatedViews().getRelatedInvoiceViews() != null) {
+       /* if (getRelatedViews().getRelatedInvoiceViews() != null) {
             for (InvoiceView element : getRelatedViews().getRelatedInvoiceViews()) {
                 // If the invoice is neither cancelled nor voided, check whether the invoice has been paid.
                 // If it has not been paid, then this method will return true.
@@ -1427,7 +1429,7 @@ public class PurchaseOrderDocument extends PurchasingDocumentBase implements Mul
                     }
                 }
             }// endfor
-        }
+        }*/
 
         return false;
     }
@@ -1631,7 +1633,8 @@ public class PurchaseOrderDocument extends PurchasingDocumentBase implements Mul
 
     protected boolean isBudgetReviewRequired() {
         // if document's fiscal year is less than or equal to the current fiscal year
-        if (SpringContext.getBean(UniversityDateService.class).getCurrentFiscalYear().compareTo(getPostingYear()) >= 0) {
+        int fiscalYear = SpringContext.getBean(UniversityDateService.class).getCurrentFiscalYear();
+        if (new Integer(fiscalYear).compareTo(getPostingYear()) >= 0) {
 
             List<SourceAccountingLine> sourceAccountingLineList = this.getSourceAccountingLines();
             boolean sufficientFundCheck = false;
@@ -1651,15 +1654,22 @@ public class PurchaseOrderDocument extends PurchasingDocumentBase implements Mul
                 }
                 if (notificationOption != null
                         && (notificationOption.equals(OLEPropertyConstants.BUD_REVIEW) )) {
+                    OleRequisitionDocumentService oleRequisitionDocumentService = (OleRequisitionDocumentService) SpringContext
+                            .getBean("oleRequisitionDocumentService");
+                    sufficientFundCheck = oleRequisitionDocumentService.hasSufficientFundsOnRequisition(accLine,notificationOption,fiscalYear);
+                    if (sufficientFundCheck) {
+                        return true;
+                    }
+
             // get list of sufficientfundItems
 
             // delete and recreate the GL entries for this document so they do not get included in the SF check
             // This is *NOT* ideal.  The SF service needs to be updated to allow it to provide the current
             // document number so that it can be exlcuded from pending entry checks.
-            List<GeneralLedgerPendingEntry> pendingEntries = getPendingLedgerEntriesForSufficientFundsChecking();
+          //  List<GeneralLedgerPendingEntry> pendingEntries = getPendingLedgerEntriesForSufficientFundsChecking();
             // dumb loop to just force OJB to load the objects.  Otherwise, the proxy object above
             // only gets resolved *after* the delete below and no SF check happens.
-            for (GeneralLedgerPendingEntry glpe : pendingEntries) {
+          /*  for (GeneralLedgerPendingEntry glpe : pendingEntries) {
                 glpe.getChartOfAccountsCode();
             }
             SpringContext.getBean(GeneralLedgerPendingEntryService.class).delete(getDocumentNumber());
@@ -1668,7 +1678,7 @@ public class PurchaseOrderDocument extends PurchasingDocumentBase implements Mul
             SpringContext.getBean(BusinessObjectService.class).save(getGeneralLedgerPendingEntries());
             if (fundsItems.size() > 0) {
                 return true;
-            }
+            }*/
                 }
                 /*Commented for jira OLE-2359
                  * for (SufficientFundsItem fundsItem : fundsItems) {
@@ -1703,7 +1713,7 @@ public class PurchaseOrderDocument extends PurchasingDocumentBase implements Mul
                 notificationOption = account.getNotificationOption();
             }
             if (notificationOption != null && notificationOption.equals(OLEPropertyConstants.NOTIFICATION)) {
-                sufficientFundCheck = oleRequisitionDocumentService.hasSufficientFundsOnRequisition(accLine);
+                sufficientFundCheck = oleRequisitionDocumentService.hasSufficientFundsOnRequisition(accLine,notificationOption,SpringContext.getBean(UniversityDateService.class).getCurrentFiscalYear());
                 if (sufficientFundCheck) {
                     return sufficientFundCheck;
                 }

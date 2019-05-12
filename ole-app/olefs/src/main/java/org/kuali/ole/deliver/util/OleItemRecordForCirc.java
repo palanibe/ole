@@ -214,16 +214,21 @@ public class OleItemRecordForCirc {
 
     public void updateCheckinCount() {
         List<LocationsCheckinCountRecord> locationsCheckinCountRecords = getLocationsCheckinCountRecords();
+        boolean isLocationPresent = false;
         if (!locationsCheckinCountRecords.isEmpty()) {
             for (Iterator<LocationsCheckinCountRecord> iterator = locationsCheckinCountRecords.iterator(); iterator.hasNext(); ) {
                 LocationsCheckinCountRecord checkinCountRecord = iterator.next();
-                if (checkinCountRecord.getLocationName().equals(getItemFullPathLocation())) {
-                    Integer locationCount = checkinCountRecord.getLocationCount();
-                    checkinCountRecord.setLocationCount(null == locationCount ? 1 : locationCount + 1);
-                    locationsCheckinCountRecordToBeUpdated = checkinCountRecord;
+                if(checkinCountRecord.getLocationName() != null){
+                    if (checkinCountRecord.getLocationName().equals(getItemFullPathLocation())) {
+                        Integer locationCount = checkinCountRecord.getLocationCount();
+                        checkinCountRecord.setLocationCount(null == locationCount ? 1 : locationCount + 1);
+                        locationsCheckinCountRecordToBeUpdated = checkinCountRecord;
+                        isLocationPresent = true;
+                    }
                 }
             }
-        } else {
+        }
+        if(!isLocationPresent) {
             locationsCheckinCountRecordToBeUpdated = new LocationsCheckinCountRecord();
             locationsCheckinCountRecordToBeUpdated.setLocationCount(1);
             locationsCheckinCountRecordToBeUpdated.setLocationName(getItemFullPathLocation());
@@ -233,6 +238,7 @@ public class OleItemRecordForCirc {
 
     public void updateInHouseCheckinCount() {
         List<LocationsCheckinCountRecord> locationsCheckinCountRecords = getLocationsCheckinCountRecords();
+        boolean isLocationPresent = false;
         if (!locationsCheckinCountRecords.isEmpty()) {
             for (Iterator<LocationsCheckinCountRecord> iterator = locationsCheckinCountRecords.iterator(); iterator.hasNext(); ) {
                 LocationsCheckinCountRecord checkinCountRecord = iterator.next();
@@ -240,9 +246,11 @@ public class OleItemRecordForCirc {
                     Integer locationInhouseCount = checkinCountRecord.getLocationInhouseCount();
                     checkinCountRecord.setLocationInhouseCount(null == locationInhouseCount ? 1 : locationInhouseCount + 1);
                     locationsCheckinCountRecordToBeUpdated = checkinCountRecord;
+                    isLocationPresent = true;
                 }
             }
-        } else {
+        }
+        if(!isLocationPresent) {
             locationsCheckinCountRecordToBeUpdated = new LocationsCheckinCountRecord();
             locationsCheckinCountRecordToBeUpdated.setLocationInhouseCount(1);
             locationsCheckinCountRecordToBeUpdated.setLocationName(getItemFullPathLocation());

@@ -44,6 +44,7 @@ import org.kuali.rice.krad.service.BusinessObjectService;
 import org.kuali.rice.krad.service.KRADServiceLocator;
 import org.kuali.rice.krad.util.KRADConstants;
 
+import java.math.BigDecimal;
 import java.sql.Date;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -110,7 +111,7 @@ public class OleRequisitionItem extends RequisitionItem implements OlePurchasing
     protected String itemForeignDiscountType;
     protected KualiDecimal itemForeignDiscountAmt;
     protected KualiDecimal itemForeignUnitCost;
-    protected KualiDecimal itemExchangeRate;
+    protected BigDecimal itemExchangeRate;
     protected KualiDecimal itemUnitCostUSD;
     protected boolean itemRouteToRequestorIndicator;
     protected boolean itemPublicViewIndicator;
@@ -770,11 +771,11 @@ public class OleRequisitionItem extends RequisitionItem implements OlePurchasing
         this.itemForeignUnitCost = itemForeignUnitCost;
     }
 
-    public KualiDecimal getItemExchangeRate() {
+    public BigDecimal getItemExchangeRate() {
         return itemExchangeRate;
     }
 
-    public void setItemExchangeRate(KualiDecimal itemExchangeRate) {
+    public void setItemExchangeRate(BigDecimal itemExchangeRate) {
         this.itemExchangeRate = itemExchangeRate;
     }
 
@@ -1200,7 +1201,9 @@ public class OleRequisitionItem extends RequisitionItem implements OlePurchasing
      * @param oleItemQuantity The oleItemQuantity to set.
      */
     public void setOleItemQuantity(KualiInteger oleItemQuantity) {
-        super.setItemQuantity(new KualiDecimal(oleItemQuantity.intValue()));
+        if(oleItemQuantity!=null) {
+            super.setItemQuantity(new KualiDecimal(oleItemQuantity.intValue()));
+        }
     }
 
     /*

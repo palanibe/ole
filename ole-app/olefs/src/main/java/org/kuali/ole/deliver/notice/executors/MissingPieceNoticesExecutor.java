@@ -78,8 +78,8 @@ public class MissingPieceNoticesExecutor extends LoanNoticesExecutor {
     public void setOleNoticeContentConfigurationBo() {
         List<OleNoticeContentConfigurationBo> oleNoticeContentConfigurationBoList = null;
         Map<String,String> noticeConfigurationMap = new HashMap<String,String>();
-        noticeConfigurationMap.put("noticeType",OLEConstants.RETURN_MISSING_PIECE_NOTICE);
-        noticeConfigurationMap.put("noticeName", noticeContentConfigName);
+        noticeConfigurationMap.put("noticeType",OLEConstants.MISSING_PIECE_NOTICE);
+        //noticeConfigurationMap.put("noticeName", noticeContentConfigName);
         oleNoticeContentConfigurationBoList= (List<OleNoticeContentConfigurationBo>)getBusinessObjectService().findMatching(OleNoticeContentConfigurationBo.class,noticeConfigurationMap);
         if(oleNoticeContentConfigurationBoList!=null && oleNoticeContentConfigurationBoList.size()>0){
             oleNoticeContentConfigurationBo = oleNoticeContentConfigurationBoList.get(0);
@@ -88,7 +88,13 @@ public class MissingPieceNoticesExecutor extends LoanNoticesExecutor {
             oleNoticeContentConfigurationBo.setNoticeTitle(getTitle());
             oleNoticeContentConfigurationBo.setNoticeBody(getBody());
             oleNoticeContentConfigurationBo.setNoticeFooterBody("");
+            oleNoticeContentConfigurationBo.setNoticeSubjectLine(OLEConstants.RETURN_MISSING_PIECE_NOTICE_SUBJECT_LINE);
         }
+    }
+
+    @Override
+    public void setOleNoticeContentConfigurationBo(OleNoticeContentConfigurationBo oleNoticeContentConfigurationBo) {
+        this.oleNoticeContentConfigurationBo=oleNoticeContentConfigurationBo;
     }
 
     public String getTitle() {
@@ -101,9 +107,6 @@ public class MissingPieceNoticesExecutor extends LoanNoticesExecutor {
         String body = OLEConstants.MISSING_PIECE_NOTICE_BODY;
         return body;
     }
-
-
-
 
 
 }

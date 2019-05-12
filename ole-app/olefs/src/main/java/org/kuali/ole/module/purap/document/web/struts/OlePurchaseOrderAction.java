@@ -59,6 +59,7 @@ import org.kuali.ole.sys.businessobject.AccountingLineBase;
 import org.kuali.ole.sys.businessobject.SourceAccountingLine;
 import org.kuali.ole.sys.context.SpringContext;
 import org.kuali.ole.sys.document.validation.event.AddAccountingLineEvent;
+import org.kuali.ole.sys.service.UniversityDateService;
 import org.kuali.ole.vnd.VendorConstants;
 import org.kuali.ole.vnd.businessobject.*;
 import org.kuali.ole.vnd.document.service.VendorService;
@@ -238,11 +239,11 @@ public class OlePurchaseOrderAction extends PurchaseOrderAction {
                                 if (poCurrencyType != null && (poCurrencyType.equalsIgnoreCase(poaCurrencyType)) && !items.isLatestExchangeRate() && !purchaseDoc.getIsPODoc() && ((purchaseDoc instanceof PurchaseOrderAmendmentDocument) || (purchaseDoc instanceof PurchaseOrderSplitDocument) || (purchaseDoc instanceof PurchaseOrderReopenDocument))) {
                                     items.setItemExchangeRate(tempCurrentExchangeRate.getItemExchangeRate());
                                 } else {
-                                    items.setItemExchangeRate(new KualiDecimal(tempOleExchangeRate.getExchangeRate()));
+                                    items.setItemExchangeRate(tempOleExchangeRate.getExchangeRate());
                                 }
                             }
                             if (items.getItemExchangeRate() != null && items.getItemForeignUnitCost() != null) {
-                                items.setItemUnitCostUSD(new KualiDecimal(items.getItemForeignUnitCost().bigDecimalValue().divide(items.getItemExchangeRate().bigDecimalValue(), 4, RoundingMode.HALF_UP)));
+                                items.setItemUnitCostUSD(new KualiDecimal(items.getItemForeignUnitCost().bigDecimalValue().divide(items.getItemExchangeRate(), 6, RoundingMode.HALF_UP)));
                                 items.setItemUnitPrice(items.getItemUnitCostUSD().bigDecimalValue().setScale(2, BigDecimal.ROUND_HALF_UP));
                                 items.setItemListPrice(items.getItemUnitCostUSD());
                             }
@@ -283,7 +284,7 @@ public class OlePurchaseOrderAction extends PurchaseOrderAction {
                 notificationOption = account.getNotificationOption();
             }
             if (notificationOption != null && notificationOption.equals(OLEPropertyConstants.BLOCK_USE)) {
-                sufficientFundCheck = oleRequisitionDocumentService.hasSufficientFundsOnRequisition(accLine);
+                sufficientFundCheck = oleRequisitionDocumentService.hasSufficientFundsOnRequisition(accLine, notificationOption, SpringContext.getBean(UniversityDateService.class).getCurrentFiscalYear());
                 if (sufficientFundCheck) {
                     GlobalVariables.getMessageMap().putError(
                             OLEConstants.SufficientFundCheck.ERROR_MSG_FOR_INSUFF_FUND, RiceKeyConstants.ERROR_CUSTOM,
@@ -398,10 +399,10 @@ public class OlePurchaseOrderAction extends PurchaseOrderAction {
                     Iterator iterator = exchangeRateList.iterator();
                     if (iterator.hasNext()) {
                         OleExchangeRate tempOleExchangeRate = (OleExchangeRate) iterator.next();
-                        purchaseOrderItem.setItemExchangeRate(new KualiDecimal(tempOleExchangeRate.getExchangeRate()));
+                        purchaseOrderItem.setItemExchangeRate(tempOleExchangeRate.getExchangeRate());
                     }
                     if (purchaseOrderItem.getItemExchangeRate() != null && purchaseOrderItem.getItemForeignUnitCost() != null) {
-                        purchaseOrderItem.setItemUnitCostUSD(new KualiDecimal(purchaseOrderItem.getItemForeignUnitCost().bigDecimalValue().divide(purchaseOrderItem.getItemExchangeRate().bigDecimalValue(), 4, RoundingMode.HALF_UP)));
+                        purchaseOrderItem.setItemUnitCostUSD(new KualiDecimal(purchaseOrderItem.getItemForeignUnitCost().bigDecimalValue().divide(purchaseOrderItem.getItemExchangeRate(), 6, RoundingMode.HALF_UP)));
                         purchaseOrderItem.setItemUnitPrice(purchaseOrderItem.getItemUnitCostUSD().bigDecimalValue().setScale(2, BigDecimal.ROUND_HALF_UP));
                         purchaseOrderItem.setItemListPrice(purchaseOrderItem.getItemUnitCostUSD());
                     }
@@ -563,11 +564,13 @@ public class OlePurchaseOrderAction extends PurchaseOrderAction {
             }
             if (item.getItemIdentifier() != null && item.getItemQuantity() != null && item.getItemNoOfParts() != null && !item.getItemQuantity().isGreaterThan(OLEConstants.ONE.kualiDecimalValue())
                     && !item.getItemNoOfParts().isGreaterThan(OLEConstants.ONE)) {
-                Map<String, String> map = new HashMap<>();
-                map.put(OLEConstants.PO_ID, item.getItemIdentifier().toString());
-                List<OleCopy> oleCopyList = (List<OleCopy>) SpringContext.getBean(BusinessObjectService.class).findMatching(OleCopy.class, map);
-                if (oleCopyList.size() == 1) {
-                    item.getCopyList().get(0).setCopyNumber(item.getSingleCopyNumber() != null && !item.getSingleCopyNumber().isEmpty() ? item.getSingleCopyNumber() : null);
+                if(item.getItemTypeCode().equals(org.kuali.ole.OLEConstants.ITM_TYP_CODE)) {
+                    Map<String, String> map = new HashMap<>();
+                    map.put(OLEConstants.PO_ID, item.getItemIdentifier().toString());
+                    List<OleCopy> oleCopyList = (List<OleCopy>) SpringContext.getBean(BusinessObjectService.class).findMatching(OleCopy.class, map);
+                    if (oleCopyList.size() == 1) {
+                        item.getCopyList().get(0).setCopyNumber(item.getSingleCopyNumber() != null && !item.getSingleCopyNumber().isEmpty() ? item.getSingleCopyNumber() : null);
+                    }
                 }
             }
             if (item.getItemIdentifier() != null) {
@@ -775,11 +778,11 @@ public class OlePurchaseOrderAction extends PurchaseOrderAction {
                     if (documentType.equals(PurapConstants.PurchaseOrderDocTypes.PURCHASE_ORDER_AMENDMENT_DOCUMENT)) {
 
                         newStatus = PurchaseOrderStatuses.APPDOC_AMENDMENT;
-                        po = SpringContext.getBean(PurchaseOrderService.class).createAndSavePotentialChangeDocument(kualiDocumentFormBase.getDocument().getDocumentNumber(), documentType, newStatus);
+                        po = SpringContext.getBean(PurchaseOrderService.class).createAndSavePotentialChangeDocument(po, documentType, newStatus);
                         returnActionForward = mapping.findForward(OLEConstants.MAPPING_BASIC);
                     } else if (documentType.equals(PurapConstants.PurchaseOrderDocTypes.PURCHASE_ORDER_REOPEN_DOCUMENT)) {
                         newStatus = PurchaseOrderStatuses.APPDOC_PENDING_REOPEN;
-                        po = SpringContext.getBean(PurchaseOrderService.class).createAndSavePotentialChangeDocument(kualiDocumentFormBase.getDocument().getDocumentNumber(), documentType, newStatus);
+                        po = SpringContext.getBean(PurchaseOrderService.class).createAndSavePotentialChangeDocument(po, documentType, newStatus);
                     } else {
                         if (documentType.equals(PurapConstants.PurchaseOrderDocTypes.PURCHASE_ORDER_CLOSE_DOCUMENT)) {
                             newStatus = PurchaseOrderStatuses.APPDOC_PENDING_CLOSE;
@@ -796,7 +799,7 @@ public class OlePurchaseOrderAction extends PurchaseOrderAction {
                         } else if (documentType.equals(PurapConstants.PurchaseOrderDocTypes.PURCHASE_ORDER_RETRANSMIT_DOCUMENT)) {
                             newStatus = PurchaseOrderStatuses.APPDOC_PENDING_RETRANSMIT;
                         }
-                        po = SpringContext.getBean(PurchaseOrderService.class).createAndRoutePotentialChangeDocument(kualiDocumentFormBase.getDocument().getDocumentNumber(), documentType, kualiDocumentFormBase.getAnnotation(), combineAdHocRecipients(kualiDocumentFormBase), newStatus);
+                        po = SpringContext.getBean(PurchaseOrderService.class).createAndRoutePotentialChangeDocument(po, documentType, kualiDocumentFormBase.getAnnotation(), combineAdHocRecipients(kualiDocumentFormBase), newStatus);
                     }
                     if (!GlobalVariables.getMessageMap().hasNoErrors()) {
                         throw new ValidationException("errors occurred during new PO creation");
@@ -870,13 +873,26 @@ public class OlePurchaseOrderAction extends PurchaseOrderAction {
                 currencyTypeIndicator=false;
             }
         }
+        Map vendorDetailMap = new HashMap();
+        vendorDetailMap.put(OLEConstants.VENDOR_HEADER_IDENTIFIER, document.getVendorHeaderGeneratedIdentifier());
+        vendorDetailMap.put(OLEConstants.VENDOR_DETAIL_IDENTIFIER, document.getVendorDetailAssignedIdentifier());
+        List<VendorAlias> vendorDetailList = (List) getBusinessObjectService().findMatching(VendorAlias.class, vendorDetailMap);
+        if (vendorDetailList != null && vendorDetailList.size() > 0) {
+            document.setVendorAliasName(vendorDetailList.get(0).getVendorAliasName());
+        }
+        else {
+            document.setVendorAliasName("");
+        }
+
         // To set PurchaseOrderTransmissionMethod depend on vendor transmission format
         if (document.getVendorDetail() != null) {
+            boolean activePreferredFound = false;
             if (document.getVendorDetail().getVendorTransmissionFormat().size() > 0) {
                 List<VendorTransmissionFormatDetail> vendorTransmissionFormat = document.getVendorDetail().getVendorTransmissionFormat();
                 for (VendorTransmissionFormatDetail iter : vendorTransmissionFormat) {
-                    if (iter.isVendorPreferredTransmissionFormat()) {
+                    if (iter.isVendorPreferredTransmissionFormat() && iter.isActive()) {
                         if (iter.getVendorTransmissionFormat().getVendorTransmissionFormat() != null) {
+                            activePreferredFound = true;
                             if (iter.getVendorTransmissionFormat().getVendorTransmissionFormat().equalsIgnoreCase(OleSelectConstant.VENDOR_TRANSMISSION_FORMAT_EDI)) {
                                 document.setPurchaseOrderTransmissionMethodCode(OleSelectConstant.METHOD_OF_PO_TRANSMISSION_NOPR);
                             } else {
@@ -885,9 +901,10 @@ public class OlePurchaseOrderAction extends PurchaseOrderAction {
                         }
                     }
                 }
-            } else {
-                document.setPurchaseOrderTransmissionMethodCode(SpringContext.getBean(ParameterService.class).getParameterValueAsString(RequisitionDocument.class, PurapParameterConstants.PURAP_DEFAULT_PO_TRANSMISSION_CODE));
             }
+            /*if (!activePreferredFound){
+                document.setPurchaseOrderTransmissionMethodCode(SpringContext.getBean(ParameterService.class).getParameterValueAsString(RequisitionDocument.class, PurapParameterConstants.PURAP_DEFAULT_PO_TRANSMISSION_CODE));
+            }*/
             if ( (!currencyTypeIndicator) && item.getItemType().isQuantityBasedGeneralLedgerIndicator()) {
                 Long currencyTypeId = document.getVendorDetail().getCurrencyType().getCurrencyTypeId();
                 Map documentNumberMap = new HashMap();
@@ -897,7 +914,7 @@ public class OlePurchaseOrderAction extends PurchaseOrderAction {
                 Iterator iterator = exchangeRateList.iterator();
                 if (iterator.hasNext()) {
                     OleExchangeRate tempOleExchangeRate = (OleExchangeRate) iterator.next();
-                    item.setItemExchangeRate(new KualiDecimal(tempOleExchangeRate.getExchangeRate()));
+                    item.setItemExchangeRate(tempOleExchangeRate.getExchangeRate());
                 }
             }
         }
@@ -1455,11 +1472,13 @@ public class OlePurchaseOrderAction extends PurchaseOrderAction {
                 }
                 if(tempItem.getItemIdentifier()!=null && tempItem.getItemQuantity() != null && tempItem.getItemNoOfParts() != null && !tempItem.getItemQuantity().isGreaterThan(OLEConstants.ONE.kualiDecimalValue())
                         && !tempItem.getItemNoOfParts().isGreaterThan(OLEConstants.ONE)){
-                    Map<String,String> map=new HashMap<>();
-                    map.put(OLEConstants.PO_ID,tempItem.getItemIdentifier().toString());
-                    List<OleCopy> oleCopyList =(List<OleCopy>)SpringContext.getBean(BusinessObjectService.class).findMatching(OleCopy.class, map);
-                    if(oleCopyList.size()==1){
-                        tempItem.getCopyList().get(0).setCopyNumber(tempItem.getSingleCopyNumber()!=null && !tempItem.getSingleCopyNumber().isEmpty()?tempItem.getSingleCopyNumber():null);
+                    if(tempItem.getItemTypeCode().equals(org.kuali.ole.OLEConstants.ITM_TYP_CODE)) {
+                        Map<String, String> map = new HashMap<>();
+                        map.put(OLEConstants.PO_ID, tempItem.getItemIdentifier().toString());
+                        List<OleCopy> oleCopyList = (List<OleCopy>) SpringContext.getBean(BusinessObjectService.class).findMatching(OleCopy.class, map);
+                        if (oleCopyList.size() == 1) {
+                            tempItem.getCopyList().get(0).setCopyNumber(tempItem.getSingleCopyNumber() != null && !tempItem.getSingleCopyNumber().isEmpty() ? tempItem.getSingleCopyNumber() : null);
+                        }
                     }
                 }
                 List<PurApAccountingLine> accountingLineBase = tempItem.getSourceAccountingLines();

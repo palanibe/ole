@@ -1,6 +1,7 @@
 package org.kuali.ole.serviceimpl;
 
 import org.apache.commons.lang.StringEscapeUtils;
+import org.apache.commons.lang.StringUtils;
 import org.apache.solr.client.solrj.SolrServerException;
 import org.kuali.ole.OLESruItemHandler;
 import org.kuali.ole.OleSRUConstants;
@@ -413,8 +414,24 @@ public class OleSRUDataServiceImpl implements OleSRUDataService {
 
     public OleSRUInstanceDocument processInstanceCollectionXml(String instanceXml) {
         LOG.info("Inside processInstanceCollectionXml method");
-        String sruTrueValue = getParameter(OleSRUConstants.BOOLEAN_FIELD_TRUE_FORMAT);
-        String sruFalseValue = getParameter(OleSRUConstants.BOOLEAN_FIELD_FALSE_FORMAT);
+        String sruTrueValue = OleSRUConstants.BOOLEAN_FIELD_TRUE_FORMAT;
+        String sruFalseValue = OleSRUConstants.BOOLEAN_FIELD_FALSE_FORMAT;
+        String availableItemStatus = OleSRUConstants.SRU_AVAILABLE_STATUSES;
+        String holdItemStatus = OleSRUConstants.SRU_ON_HOLD_STATUSES;
+        List<String> availableItemStatuses = new ArrayList<String>();
+        List<String> holdItemStatuses = new ArrayList<String>();
+
+        if(StringUtils.isNotEmpty(availableItemStatus)){
+            String[] availableStatus =  availableItemStatus.split(";");
+            Collections.addAll(availableItemStatuses, availableStatus);
+        }
+
+
+        if(StringUtils.isNotEmpty(holdItemStatus)){
+            String[] holdStatus =  holdItemStatus.split(";");
+            Collections.addAll(holdItemStatuses, holdStatus);
+        }
+
         InstanceOlemlRecordProcessor instanceOlemlRecordProcessor = new InstanceOlemlRecordProcessor();
         InstanceCollection instanceCollection = instanceOlemlRecordProcessor.fromXML(instanceXml);
         OleSRUInstanceDocument oleSRUInstanceDocument = null;
@@ -464,12 +481,12 @@ public class OleSRUDataServiceImpl implements OleSRUDataService {
                             OleSRUCirculationDocument oleSRUCirculationDocument = new OleSRUCirculationDocument();
                             oleSRUCirculationDocument.setItemId(item.getBarcodeARSL());
                             StringBuffer locationName = new StringBuffer();
-                            if (item.getItemStatus() != null && item.getItemStatus().getCodeValue().equalsIgnoreCase(OleSRUConstants.ITEM_STATUS_AVAILABLE)) {
+                            if (item.getItemStatus() != null && availableItemStatuses.contains(item.getItemStatus().getCodeValue())) {
                                 oleSRUCirculationDocument.setAvailableNow(sruTrueValue);
                             } else {
                                 oleSRUCirculationDocument.setAvailableNow(sruFalseValue);
                             }
-                            if (item.getItemStatus() != null && item.getItemStatus().getCodeValue().equalsIgnoreCase(OleSRUConstants.ITEM_STATUS_ONHOLD)) {
+                            if (item.getItemStatus() != null && holdItemStatuses.contains(item.getItemStatus().getCodeValue())) {
                                 oleSRUCirculationDocument.setOnHold(sruTrueValue);
                             } else {
                                 oleSRUCirculationDocument.setOnHold(sruFalseValue);
@@ -563,18 +580,16 @@ public class OleSRUDataServiceImpl implements OleSRUDataService {
     }
     private String getLocations(Location location,String paramName) {
         String locationName = "";
-        String level =getParameter(paramName);
-        int i = 0;
         LocationLevel locationLevel = location.getLocationLevel();
-        if (locationLevel != null && level!=null) {
-            while (locationLevel!=null) {
-                if (locationLevel.getLevel()!=null && locationLevel.getLevel().equalsIgnoreCase(level)) {
+        if(locationLevel != null) {
+            if (StringUtils.isNotBlank(paramName)) {
+                if (locationLevel.getLevel() != null && locationLevel.getLevel().equalsIgnoreCase(paramName)) {
                     locationName = locationLevel.getName();
-                    break;
-                } else {
-                    locationLevel = locationLevel.getLocationLevel();
+                } else if (locationLevel.getLocationLevel() != null && locationLevel.getLocationLevel().getLevel() != null && locationLevel.getLocationLevel().getLevel().equalsIgnoreCase(paramName)) {
+                    locationName = locationLevel.getLocationLevel().getName();
+                } else if (locationLevel.getLocationLevel().getLocationLevel() != null && locationLevel.getLocationLevel().getLocationLevel().getLevel() != null && locationLevel.getLocationLevel().getLocationLevel().getLevel().equalsIgnoreCase(paramName)) {
+                    locationName = locationLevel.getLocationLevel().getLocationLevel().getName();
                 }
-
             }
         }
         return locationName;

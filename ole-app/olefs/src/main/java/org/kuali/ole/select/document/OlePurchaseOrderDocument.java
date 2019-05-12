@@ -483,7 +483,9 @@ public class OlePurchaseOrderDocument extends PurchaseOrderDocument {
                     OlePurchaseOrderItem singleItem = (OlePurchaseOrderItem) iterator.next();
                     // Added for jira OLE-2811 starts
                     //Modified for jiar OLE-6032
-                    setItemDetailWhileProcessAfterRetrive(singleItem);
+                    if(singleItem.getItemTypeCode().equals(org.kuali.ole.OLEConstants.ITM_TYP_CODE)) {
+                        setItemDetailWhileProcessAfterRetrive(singleItem);
+                    }
                 }catch(Exception e){
                     LOG.error("Exception in OlePurchaseOrderDocument:processAfterRetrieve --Exception while processing receiving purchasing record--->"+e);
                     e.printStackTrace();
@@ -524,7 +526,7 @@ public class OlePurchaseOrderDocument extends PurchaseOrderDocument {
         if(olePurchaseOrderItem.getClaimDate()==null){
             getOlePurapService().setClaimDateForPO(olePurchaseOrderItem,this.vendorDetail);
         }
-        if(olePurchaseOrderItem.getCopyList().size() > 0 && olePurchaseOrderItem.getItemTitleId()!=null) {
+        if(olePurchaseOrderItem.getCopyList().size() > 0 && olePurchaseOrderItem.getItemTitleId()!=null && olePurchaseOrderItem.getInvoiceDocuments().size()==0) {
             //getOlePurapService().setInvoiceDocumentsForPO(olePurchaseOrderItem);
             getOlePurapService().setInvoiceDocumentsForPO(this,olePurchaseOrderItem);
         }
@@ -560,8 +562,8 @@ public class OlePurchaseOrderDocument extends PurchaseOrderDocument {
                 for (OleCopy oleCopy : singleItem.getCopyList()) {
                     OleCopy copy = copyList.get(copyCount);
                     oleCopy.setLocation(copy.getLocation());
-                    oleCopy.setEnumeration(copy.getEnumeration());
-                    oleCopy.setCopyNumber(copy.getCopyNumber());
+                    //oleCopy.setEnumeration(copy.getEnumeration());
+                    //oleCopy.setCopyNumber(copy.getCopyNumber());
                     oleCopy.setPartNumber(copy.getPartNumber());
                     copyCount++;
                 }
@@ -579,10 +581,10 @@ public class OlePurchaseOrderDocument extends PurchaseOrderDocument {
                 || singleItem.getItemNoOfParts().isGreaterThan(new KualiInteger(1)))) {
             singleItem.setCopies(getOleCopyHelperService().setCopiesToLineItem(singleItem.getCopyList(), singleItem.getItemNoOfParts(), singleItem.getItemTitleId()));
         }
-        if(singleItem.getCopyList().size() > 0 && singleItem.getItemTitleId() != null) {
+        /*if(singleItem.getCopyList().size() > 0 && singleItem.getItemTitleId() != null) {
             //getOlePurapService().setInvoiceDocumentsForPO(singleItem);
             getOlePurapService().setInvoiceDocumentsForPO(this,singleItem);
-        }
+        }*/
         else if (singleItem.getCopyList().size() > 0 && singleItem.getItemTitleId() == null) {
             getOlePurapService().setInvoiceDocumentsForEResourcePO(singleItem);
         }
@@ -738,19 +740,19 @@ public class OlePurchaseOrderDocument extends PurchaseOrderDocument {
             if (nodeName != null
                     && (nodeName.equalsIgnoreCase(PurapWorkflowConstants.BUDGET_NODE) || nodeName
                     .equalsIgnoreCase(PurapWorkflowConstants.BUDGET_REVIEW_REQUIRED))) {
-                if (SpringContext.getBean(UniversityDateService.class).getCurrentFiscalYear().compareTo(getPostingYear()) >= 0) {
+                /*if (SpringContext.getBean(UniversityDateService.class).getCurrentFiscalYear().compareTo(getPostingYear()) >= 0) {
                     List<GeneralLedgerPendingEntry> pendingEntries = getPendingLedgerEntriesForSufficientFundsChecking();
-                    for (GeneralLedgerPendingEntry glpe : pendingEntries) {
+                    *//*for (GeneralLedgerPendingEntry glpe : pendingEntries) {
                         glpe.getChartOfAccountsCode();
-                    }
+                    }*//*
                     SpringContext.getBean(GeneralLedgerPendingEntryService.class).delete(getDocumentNumber());
                     fundsItems = SpringContext.getBean(SufficientFundsService.class).checkSufficientFunds(pendingEntries);
-                    SpringContext.getBean(GeneralLedgerPendingEntryService.class).generateGeneralLedgerPendingEntries(this);
-                    SpringContext.getBean(BusinessObjectService.class).save(getGeneralLedgerPendingEntries());
-                }
+                 //   SpringContext.getBean(GeneralLedgerPendingEntryService.class).generateGeneralLedgerPendingEntries(this);
+                 //   SpringContext.getBean(BusinessObjectService.class).save(getGeneralLedgerPendingEntries());
+                }*/
                 SpringContext.getBean(PurapAccountingService.class).updateAccountAmounts(this);
                 accountsForRouting = (SpringContext.getBean(PurapAccountingService.class).generateSummary(getItems()));
-                List<String> fundsItemList = new ArrayList<String>();
+                /*List<String> fundsItemList = new ArrayList<String>();
                 for (SufficientFundsItem fundsItem : fundsItems) {
                     fundsItemList.add(fundsItem.getAccount().getChartOfAccountsCode());
                 }
@@ -758,7 +760,7 @@ public class OlePurchaseOrderDocument extends PurchaseOrderDocument {
                     if (!(fundsItemList.contains(((SourceAccountingLine) accountsForRoutingIter.next()).getChartOfAccountsCode()))) {
                         accountsForRoutingIter.remove();
                     }
-                }
+                }*/
                 setAccountsForRouting(accountsForRouting);
                 // need to refresh to get the references for the searchable attributes (ie status) and for invoking route levels (ie account
                 // objects) -hjs

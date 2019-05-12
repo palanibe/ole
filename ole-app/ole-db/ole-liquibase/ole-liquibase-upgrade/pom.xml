@@ -15,7 +15,7 @@
             <id>mysql</id>
             <properties>
                 <db.vendor>mysql</db.vendor>
-                <jdbc.url>jdbc:mysql://mysql.ole.kuali.org:3306/${sql.database}</jdbc.url>
+                <jdbc.url>jdbc:mysql://mysql.oleproject.org:3306/${sql.database}</jdbc.url>
                 <jdbc.driver>com.mysql.jdbc.Driver</jdbc.driver>
             </properties>
         </profile>
@@ -24,7 +24,7 @@
             <id>oracle</id>
             <properties>
                 <db.vendor>oracle</db.vendor>
-                <jdbc.url>jdbc:oracle:thin:@oracle.ole.kuali.org:1521:OLE</jdbc.url>
+                <jdbc.url>jdbc:oracle:thin:@oracle.oleproject.org:1521:OLE</jdbc.url>
                 <jdbc.driver>oracle.jdbc.driver.OracleDriver</jdbc.driver>
             </properties>
         </profile>
@@ -175,7 +175,7 @@
                                         <defaultSchemaName>OLE</defaultSchemaName>
                                     </configuration>
                                 </execution>
-				
+
                                 <execution>
                                     <id>db.changelog-2.0</id>
                                     <phase>${lb.phase}</phase>
@@ -201,6 +201,33 @@
                                         <defaultSchemaName>OLE</defaultSchemaName>
                                     </configuration>
                                 </execution>
+
+                                <execution>
+                                    <id>db.changelog-gobi</id>
+                                    <phase>${lb.phase}</phase>
+                                    <goals>
+                                        <goal>updateSQL</goal>
+                                    </goals>
+                                    <configuration>
+                                        <changeLogFile>org/kuali/ole/gobi/db.changelog-gobi.xml</changeLogFile>
+                                        <verbose>true</verbose>
+                                        <defaultSchemaName>OLE</defaultSchemaName>
+                                    </configuration>
+                                </execution>
+
+                                <execution>
+                                    <id>db.changelog-3.0</id>
+                                    <phase>${lb.phase}</phase>
+                                    <goals>
+                                        <goal>updateSQL</goal>
+                                    </goals>
+                                    <configuration>
+                                        <changeLogFile>org/kuali/ole/3.0/db.changelog-20160208.xml</changeLogFile>
+                                        <verbose>true</verbose>
+                                        <defaultSchemaName>OLE</defaultSchemaName>
+                                    </configuration>
+                                </execution>
+
 
                             </executions>
                             <dependencies>
@@ -486,7 +513,7 @@
                                         </migrationSqlOutputFile>
                                     </configuration>
                                 </execution>
-				
+
                                 <execution>
                                     <id>db.changelog-2.0</id>
                                     <phase>${lb.phase}</phase>
@@ -509,6 +536,59 @@
                                     <configuration>
                                         <changeLogFile>org/kuali/ole/2.1/db.changelog-20151123.xml</changeLogFile>
                                         <migrationSqlOutputFile>${lb.sql.dir}/2.1.sql
+                                        </migrationSqlOutputFile>
+                                    </configuration>
+                                </execution>
+
+                                <execution>
+                                    <id>db.changelog-gobi</id>
+                                    <phase>${lb.phase}</phase>
+                                    <goals>
+                                        <goal>updateSQL</goal>
+                                    </goals>
+                                    <configuration>
+                                        <changeLogFile>org/kuali/ole/gobi/db.changelog-gobi.xml</changeLogFile>
+                                        <migrationSqlOutputFile>${lb.sql.dir}/gobi.sql
+                                        </migrationSqlOutputFile>
+                                    </configuration>
+                                </execution>
+
+
+                                <execution>
+                                    <id>db.changelog-3.0</id>
+                                    <phase>${lb.phase}</phase>
+                                    <goals>
+                                        <goal>updateSQL</goal>
+                                    </goals>
+                                    <configuration>
+                                        <changeLogFile>org/kuali/ole/3.0/db.changelog-20160208.xml</changeLogFile>
+                                        <migrationSqlOutputFile>${lb.sql.dir}/3.0.sql
+                                        </migrationSqlOutputFile>
+                                    </configuration>
+                                </execution>
+
+                                <execution>
+                                    <id>db.changelog-3.0.5</id>
+                                    <phase>${lb.phase}</phase>
+                                    <goals>
+                                        <goal>updateSQL</goal>
+                                    </goals>
+                                    <configuration>
+                                        <changeLogFile>org/kuali/ole/3.0.5/db.changelog-20170718.xml</changeLogFile>
+                                        <migrationSqlOutputFile>${lb.sql.dir}/3.0.5.sql
+                                        </migrationSqlOutputFile>
+                                    </configuration>
+                                </execution>
+
+                                <execution>
+                                    <id>db.changelog-3.0.11</id>
+                                    <phase>${lb.phase}</phase>
+                                    <goals>
+                                        <goal>updateSQL</goal>
+                                    </goals>
+                                    <configuration>
+                                        <changeLogFile>org/kuali/ole/3.0.11/db.changelog-20171227.xml</changeLogFile>
+                                        <migrationSqlOutputFile>${lb.sql.dir}/3.0.11.sql
                                         </migrationSqlOutputFile>
                                     </configuration>
                                 </execution>

@@ -103,7 +103,13 @@ public class NoticeMailContentFormatterTest {
         oleLoanDocument.setOlePatron(olePatron);
 
         HashMap<String, String> fieldLabelMap = new HashMap<>();
-        String mailContent = noticeMailContentFormatter.generateMailContentForPatron(Collections.singletonList(oleLoanDocument), new OleNoticeContentConfigurationBo());
+        OleNoticeContentConfigurationBo oleNoticeContentConfigurationBo = new OleNoticeContentConfigurationBo();
+        oleNoticeContentConfigurationBo.setActive(true);
+        oleNoticeContentConfigurationBo.setNoticeName("Notice Name");
+        oleNoticeContentConfigurationBo.setNoticeTitle("Notice Title");
+        oleNoticeContentConfigurationBo.setNoticeType("Notice Type");
+        oleNoticeContentConfigurationBo.setNoticeBody("This is a test notice. Please ingore!");
+        String mailContent = noticeMailContentFormatter.generateMailContentForPatron(Collections.singletonList(oleLoanDocument), oleNoticeContentConfigurationBo);
         System.out.println(mailContent);
 
     }
@@ -641,8 +647,12 @@ public class NoticeMailContentFormatterTest {
         protected void processCustomNoticeInfo(OleLoanDocument oleLoanDocument, OleNoticeBo oleNoticeBo) {
             oleNoticeBo.setNoticeTitle("Lost");
             oleNoticeBo.setBillNumber(oleLoanDocument.getRepaymentFeePatronBillId());
-            oleNoticeBo.setFeeType("Replacement Bill");
-            oleNoticeBo.setFeeAmount(oleLoanDocument.getReplacementBill());
+            oleNoticeBo.setFeeType(OLEConstants.REPLACEMENT_FEE);
+            if(oleLoanDocument.getReplacementBill() != null) {
+                BigDecimal feeamount = oleLoanDocument.getReplacementBill();
+                feeamount = feeamount.setScale(2, BigDecimal.ROUND_HALF_UP);
+                oleNoticeBo.setFeeAmount("$" + feeamount.toString());
+            }
         }
 
         @Override

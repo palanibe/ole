@@ -1,5 +1,7 @@
 package org.kuali.ole.docstore.common.constants;
 
+import java.text.SimpleDateFormat;
+
 /**
  * Created by pvsubrah on 9/18/15.
  */
@@ -89,6 +91,7 @@ public interface DocstoreConstants {
     public static final String STATUS_SEARCH = "Status_search";
     public static final String STATUS_DISPLAY = "Status_display";
     public static final String BIB_ID= "bibIdentifier";
+    public static final String BIBLIOGRAPHIC_DELETE= "bibliographic_delete";
 
     public static final String CLMS_RET_FLAG="claimsReturnedFlag";
     public static final String CLMS_RET_FLAG_CRE_DATE="claimsReturnedFlagCreateDate";
@@ -244,6 +247,7 @@ public interface DocstoreConstants {
     public static final String DAT_FORMAT_EFFECTIVE = "MM/dd/yyyy hh:mm:ssa";
     public static final String DATE_FORMAT_EFFECTIVE = "MM/dd/yyyy hh:mm:ss a";
     public static final String DAT_FORMAT_EFFECTIVE_NOTICE = "MM/dd/yyyy HH:mm:ss";
+    public static final String SOLR_DOC_DATE_FORMAT="E MMM dd HH:mm:ss Z yyyy";
     public static final String DESCRIBE_EFFECTIVE_DATE = "00:00:00";
     public static final String BIB_IDENTIFIER = "bibIdentifier";
     public static final String HOLDINGS_IDENTIFIER = "holdingsIdentifier";
@@ -360,5 +364,12 @@ public interface DocstoreConstants {
 
     public static final String TRANSFER_SUCCESS_MESSAGE = "Document transferred successfully";
     public static final String TRANSFER_BOUND_WITH_ERROR_MESSAGE = "Holdings can not be transfered. Holdings is bound-with more than one bib";
+
+    public static final SimpleDateFormat DOCSTORE_DATE_FORMAT = new SimpleDateFormat("MM/dd/yyyy hh:mm:ss a");
+    public static final String FORWARD_SLASH = "/";
+
+    public static final String TRANSFER_HOLDINGS_ANALYTIC_ERROR_MESSAGE = "Holdings can not be transfered. Holdings is in analytic relation.";
+    public static final String TRANSFER_HOLDINGS_ITEM_ANALYTIC_ERROR_MESSAGE = "Holdings can not be transfered. Item attached with Holdings is in analytic relation.";
+    public static final String TRANSFER_ITEM_ANALYTIC_ERROR_MESSAGE = "Item can not be transfered. Item is in analytic relation.";
 
 }

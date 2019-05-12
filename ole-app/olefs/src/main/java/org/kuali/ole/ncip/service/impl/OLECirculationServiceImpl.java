@@ -1,5 +1,7 @@
 package org.kuali.ole.ncip.service.impl;
 
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.time.DateUtils;
 import org.apache.log4j.Logger;
 import org.kuali.ole.DataCarrierService;
 import org.kuali.ole.OLEConstants;
@@ -27,7 +29,9 @@ import org.kuali.ole.util.DocstoreUtil;
 import org.kuali.rice.core.api.config.property.ConfigContext;
 import org.kuali.rice.core.api.config.property.ConfigurationService;
 import org.kuali.rice.core.api.resourceloader.GlobalResourceLoader;
+import org.kuali.rice.kim.api.identity.principal.Principal;
 import org.kuali.rice.kim.impl.identity.principal.PrincipalBo;
+import org.kuali.rice.kim.service.impl.IdentityManagementServiceImpl;
 import org.kuali.rice.krad.service.BusinessObjectService;
 import org.kuali.rice.krad.service.KRADServiceLocator;
 import org.kuali.rice.krms.api.engine.EngineResults;
@@ -277,8 +281,8 @@ public class OLECirculationServiceImpl implements OLECirculationService {
     }
 
     @Override
-      public String placeRequest(String patronBarcode, String operatorId, String itemBarcode, String requestType, String pickUpLocation, String itemLocation, String bibId, String requestLevel, java.sql.Date requestExpiryDate, String requestNote) {
-        String responseMessage = oleDeliverRequestDocumentHelperService.placeRequest(patronBarcode, operatorId, itemBarcode, requestType, pickUpLocation, null, itemLocation, null, null, null, null, false,bibId,requestLevel,requestExpiryDate, requestNote);
+      public String placeRequest(String patronBarcode, String operatorId, String itemBarcode, String itemIdentifier, String requestType, String pickUpLocation, String itemLocation, String bibId, String requestLevel, java.sql.Date requestExpiryDate, String requestNote) {
+        String responseMessage = oleDeliverRequestDocumentHelperService.placeRequest(patronBarcode, operatorId, itemBarcode, requestType, pickUpLocation, itemIdentifier, itemLocation, null, null, null, null, false,bibId,requestLevel,requestExpiryDate, requestNote);
         return responseMessage;  //To change body of implemented methods use File | Settings | File Templates.
     }
 
@@ -421,7 +425,14 @@ public class OLECirculationServiceImpl implements OLECirculationService {
             }
         }
         try {
-            itemIdentifier = oleCirculationHelperService.acceptItem(itemBarcode, callNumber, title, author, itemType, itemLocation);
+            if(StringUtils.isNotBlank(operator)) {
+                IdentityManagementServiceImpl identityManagementService = new IdentityManagementServiceImpl();
+                Principal principal = identityManagementService.getPrincipal(operator);
+                if(principal!=null) {
+                    operator = principal.getPrincipalName();
+                }
+            }
+            itemIdentifier = oleCirculationHelperService.acceptItem(itemBarcode, callNumber, title, author, itemType, itemLocation, operator);
             if (null == itemIdentifier) {
                 oleAcceptItem.setCode("031");
                 oleAcceptItem.setMessage(ConfigContext.getCurrentContextConfig().getProperty(OLEConstants.ITEM_EXIST));
@@ -728,7 +739,7 @@ public class OLECirculationServiceImpl implements OLECirculationService {
                 }
             }
             if (oleDeliverRequestBo.getRequestExpiryDate() != null) {
-                oleHold.setExpiryDate(oleDeliverRequestBo.getRequestExpiryDate().toString());
+                oleHold.setRequestExpiryDate(oleDeliverRequestBo.getRequestExpiryDate().toString());
             }
             if (oleDeliverRequestBo.getCreateDate() != null) {
                 oleHold.setCreateDate(oleDeliverRequestBo.getCreateDate().toString());
@@ -742,6 +753,9 @@ public class OLECirculationServiceImpl implements OLECirculationService {
             }
             if (oleDeliverRequestBo.getRecallDueDate() != null) {
                 oleHold.setDateRecalled(oleDeliverRequestBo.getRecallDueDate().toString());
+            }
+            if (oleDeliverRequestBo.getHoldExpirationDate() != null) {
+                oleHold.setHoldExpiryDate(oleDeliverRequestBo.getHoldExpirationDate().toString());
             }
             if (oleDeliverRequestTypeMap!=null && oleDeliverRequestTypeMap.size() > 0) {
                 if(oleDeliverRequestTypeMap.get(oleDeliverRequestBo.getRequestTypeId())!=null){
@@ -902,7 +916,7 @@ public class OLECirculationServiceImpl implements OLECirculationService {
               oleCheckedOutItem.setCatalogueId(oleLoanDocument.getBibUuid());
               if (oleLoanDocument.getLoanDueDate() != null) {
                   oleCheckedOutItem.setDueDate(oleLoanDocument.getLoanDueDate().toString());
-                  if ((fmt.format(oleLoanDocument.getLoanDueDate())).compareTo(fmt.format(new Date(System.currentTimeMillis()))) > 0) {
+                  if ((fmt.format(oleLoanDocument.getLoanDueDate())).compareTo(fmt.format(DateUtils.addDays(new Date(System.currentTimeMillis()),-1))) > 0) {
                       oleCheckedOutItem.setOverDue(false);
                   }
                   else{

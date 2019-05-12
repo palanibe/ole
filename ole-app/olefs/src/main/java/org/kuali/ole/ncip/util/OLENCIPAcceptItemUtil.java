@@ -219,7 +219,7 @@ public class OLENCIPAcceptItemUtil {
         getBusinessObjectService().save(oleDeliverNoticeHistory);
     }
 
-    public Map placeRequest(String operatorId, OlePatronDocument olePatronDocument, String itemBarcode, String itemUUID, OleCirculationDesk olePickUpLocation, String requestTypeId, String bibId, String title, String author, String callNumber, String requestExpirationDay, String location) {
+    public Map placeRequest(String operatorId, OlePatronDocument olePatronDocument, String itemBarcode, String itemUUID, OleCirculationDesk olePickUpLocation, String requestTypeId, String bibId, String title, String author, String callNumber, String requestExpirationDay, String location, String requestExpirationConfigName, String onHoldConfigName, String onHoldCourtesyConfigName,String onHoldExpirationConfigName) {
         OleStopWatch oleStopWatch = new OleStopWatch();
         oleStopWatch.start();
         Map responseMap = new HashMap();
@@ -240,7 +240,7 @@ public class OLENCIPAcceptItemUtil {
         OleDeliverRequestBo oleDeliverRequestBo = null;
         oleDeliverRequestBo = (OleDeliverRequestBo) newDocument.getNewMaintainableObject().getDataObject();
         try {
-            oleDeliverRequestBo.setCreateDate(new java.sql.Date(System.currentTimeMillis()));
+            oleDeliverRequestBo.setCreateDate(new Timestamp(System.currentTimeMillis()));
             oleDeliverRequestBo.setRequestLevel("Item Level");
 
             oleDeliverRequestBo.setBorrowerId(olePatronDocument.getOlePatronId());
@@ -266,6 +266,11 @@ public class OLENCIPAcceptItemUtil {
             oleDeliverRequestBo.setOperatorCreateId(operatorId);
 
             oleDeliverRequestBo.setItemLocation(location);
+
+            oleDeliverRequestBo.setRequestExpirationNoticeContentConfigName(requestExpirationConfigName);
+            oleDeliverRequestBo.setOnHoldNoticeContentConfigName(onHoldConfigName);
+            oleDeliverRequestBo.setOnHoldCourtesyNoticeContentConfigName(onHoldCourtesyConfigName);
+            oleDeliverRequestBo.setOnHoldExpirationNoticeContentConfigName(onHoldExpirationConfigName);
 
             if (StringUtils.isNotBlank(requestExpirationDay)) {
                 Timestamp requestExpirationDate = getOleDeliverRequestDocumentHelperService().calculateXDatesBasedOnCalendar(getOleDeliverRequestDocumentHelperService().getCalendarGroup(oleDeliverRequestBo.getItemLocation()), requestExpirationDay, null, true);
@@ -336,13 +341,13 @@ public class OLENCIPAcceptItemUtil {
                 if (!content.trim().equals("")) {
                     OleMailer oleMailer = GlobalResourceLoader.getService("oleMailer");
                     if (oleDeliverRequestBo.getOlePickUpLocation() != null && StringUtils.isNotBlank(oleDeliverRequestBo.getOlePickUpLocation().getReplyToEmail())) {
-                        oleMailer.sendEmail(new EmailFrom(oleDeliverRequestBo.getOlePickUpLocation().getReplyToEmail()), new EmailTo(oleNoticeBo.getPatronEmailAddress()), new EmailSubject(OLEConstants.NOTICE_MAIL), new EmailBody(content), true);
+                        oleMailer.sendEmail(new EmailFrom(oleDeliverRequestBo.getOlePickUpLocation().getReplyToEmail()), new EmailTo(oleNoticeBo.getPatronEmailAddress()), new EmailSubject(OLEConstants.PICKUP_NOTICE_SUBJECT_LINE), new EmailBody(content), true);
                     } else {
                         String fromAddress = getParameter(OLEParameterConstants.NOTICE_FROM_MAIL);
                         if (fromAddress != null && (fromAddress.equals("") || fromAddress.trim().isEmpty())) {
                             fromAddress = OLEConstants.KUALI_MAIL;
                         }
-                        oleMailer.sendEmail(new EmailFrom(fromAddress), new EmailTo(oleNoticeBo.getPatronEmailAddress()), new EmailSubject(OLEConstants.NOTICE_MAIL), new EmailBody(content), true);
+                        oleMailer.sendEmail(new EmailFrom(fromAddress), new EmailTo(oleNoticeBo.getPatronEmailAddress()), new EmailSubject(OLEConstants.PICKUP_NOTICE_SUBJECT_LINE), new EmailBody(content), true);
                     }
                     if (LOG.isDebugEnabled()) {
                         LOG.debug("Mail send Successfully to " + oleNoticeBo.getPatronEmailAddress());

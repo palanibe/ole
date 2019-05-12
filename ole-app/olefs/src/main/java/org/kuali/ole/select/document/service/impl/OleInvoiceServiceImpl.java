@@ -249,6 +249,7 @@ public class OleInvoiceServiceImpl extends InvoiceServiceImpl implements OleInvo
     protected void spawnPoAmendmentForUnorderedItems(OleInvoiceDocument invoice, PurchaseOrderDocument po) {
 
         LOG.debug("Inside spawnPoAmendmentForUnorderedItems");
+        final PurchaseOrderDocument currentPO = po;
         if (invoice != null && invoice instanceof OleInvoiceDocument) {
             OleInvoiceDocument rlDoc = invoice;
 
@@ -264,7 +265,7 @@ public class OleInvoiceServiceImpl extends InvoiceServiceImpl implements OleInvo
                             String poDocNumber = (String) objects[1];
 
                             //create a PO amendment
-                            PurchaseOrderAmendmentDocument amendmentPo = (PurchaseOrderAmendmentDocument) purchaseOrderService.createAndSavePotentialChangeDocument(poDocNumber, PurchaseOrderDocTypes.PURCHASE_ORDER_AMENDMENT_DOCUMENT, PurchaseOrderStatuses.APPDOC_AMENDMENT);
+                            PurchaseOrderAmendmentDocument amendmentPo = (PurchaseOrderAmendmentDocument) purchaseOrderService.createAndSavePotentialChangeDocument(currentPO, PurchaseOrderDocTypes.PURCHASE_ORDER_AMENDMENT_DOCUMENT, PurchaseOrderStatuses.APPDOC_AMENDMENT);
 
                             //add new lines to amendement
                             addUnorderedItemsToAmendment(amendmentPo, rlDoc);
@@ -985,30 +986,31 @@ public class OleInvoiceServiceImpl extends InvoiceServiceImpl implements OleInvo
         }
         positiveLineItems.removeAll(lineItems);
         negativeLineItems.removeAll(lineItems);
-        if((isItemLevelDebit == null && isAdditionalChargeLevelDebit!=null && isAdditionalChargeLevelDebit) ||
+        /*if((isItemLevelDebit == null && isAdditionalChargeLevelDebit!=null && isAdditionalChargeLevelDebit) ||
                 (isAdditionalChargeLevelDebit == null && isItemLevelDebit!=null && isItemLevelDebit) ||
                 (isItemLevelCredit == null && isAdditionalChargeLevelCredit!=null && isAdditionalChargeLevelCredit) ||
                 (isAdditionalChargeLevelCredit == null && isItemLevelCredit!=null && isItemLevelCredit)
                         && !(isItemLevelCredit!=null && isItemLevelCredit && isItemLevelDebit!=null && isItemLevelDebit)){
-            if(new KualiDecimal(firstPOTotalUnitPrice).isNegative()){
+           *//* if(new KualiDecimal(firstPOTotalUnitPrice).isNegative()){
                 createCreditMemoDocument(inv, lineItems,true);
             }else{
                 createPaymentRequestDocument(oleInvoiceDocument, lineItems,true);
-            }
+            }*//*
             if (positiveLineItems.size() > 0) {
                 createPaymentRequestDocument(oleInvoiceDocument, positiveLineItems,false);
             }
             if (negativeLineItems.size() > 0) {
                 createCreditMemoDocument(inv, negativeLineItems,false);
             }
-        }else{
-            if (positiveItems.size() > 0) {
-                createPaymentRequestDocument(oleInvoiceDocument, positiveItems,false);
-            }
-            if (negativeItems.size() > 0) {
-                createCreditMemoDocument(inv, negativeItems,false);
-            }
+
+        }else{*/
+        if (positiveItems.size() > 0) {
+            createPaymentRequestDocument(oleInvoiceDocument, positiveItems,true);
         }
+        if (negativeItems.size() > 0) {
+            createCreditMemoDocument(oleInvoiceDocument, negativeItems,true);
+        }
+    //    }
     }
 
     public void createPaymentRequestDocument(OleInvoiceDocument inv, List<OleInvoiceItem> items,boolean flag) {
@@ -1622,6 +1624,16 @@ public class OleInvoiceServiceImpl extends InvoiceServiceImpl implements OleInvo
                 invItemMap.put(PurapConstants.PRQSDocumentsStrings.PUR_ID, invoiceDocument.getPurapDocumentIdentifier());
                 invItemMap.put(PurapConstants.PRQSDocumentsStrings.PO_ID, purchaseOrderId);
                 List<OleInvoiceItem> invoiceItems = (List<OleInvoiceItem>) businessObjectService.findMatchingOrderBy(OleInvoiceItem.class, invItemMap, PurapConstants.PRQSDocumentsStrings.PO_ID, true);
+                List<OleInvoiceItem> invoiceItemList = new ArrayList();
+                if(invoiceDocument.getProrateBy() != null && (invoiceDocument.getProrateBy().equals(OLEConstants.PRORATE_BY_QTY) || invoiceDocument.getProrateBy().equalsIgnoreCase(OLEConstants.PRORATE_BY_DOLLAR) || invoiceDocument.getProrateBy().equalsIgnoreCase(OLEConstants.MANUAL_PRORATE))) {
+                    for(OleInvoiceItem item : (List<OleInvoiceItem>)invoiceDocument.getItems()) {
+                        if(item.getPurchaseOrderIdentifier().intValue() == invoiceItems.get(0).getPurchaseOrderIdentifier().intValue()) {
+                            invoiceItemList.add(item);
+                        }
+                    }
+                } else {
+                    invoiceItemList = invoiceItems;
+                }
                 KualiDecimal itemCount = new KualiDecimal(0);
                 KualiDecimal itemPrice = new KualiDecimal(0);
                 PurchaseOrderDocument poDoc = invoiceDocument.getPurchaseOrderDocument(purchaseOrderId);
@@ -1641,7 +1653,7 @@ public class OleInvoiceServiceImpl extends InvoiceServiceImpl implements OleInvo
 
                 HashMap<String, ExpiredOrClosedAccountEntry> expiredOrClosedAccountList = SpringContext.getBean(AccountsPayableService.class).expiredOrClosedAccountsList(poDoc);
                 //int itemLineNumberCount = 0;
-                for (OleInvoiceItem invoiceItem : invoiceItems) {
+                for (OleInvoiceItem invoiceItem : invoiceItemList) {
                     if ((flag || !invoiceItem.isDebitItem()) && invoiceItem.getExtendedPrice().isNonZero()) {
 
                         OleCreditMemoItem creditMemoItem = new OleCreditMemoItem(invoiceItem, vendorCreditMemoDocument, expiredOrClosedAccountList);
@@ -1685,7 +1697,7 @@ public class OleInvoiceServiceImpl extends InvoiceServiceImpl implements OleInvo
 
     @Override
     public OleInvoiceDocument getInvoiceDocumentById(Integer invoiceIdentifier) {
-        OleInvoiceDocument invoiceDocument = getInvoiceByDocumentNumber(invoiceDao.getDocumentNumberByInvoiceId(invoiceIdentifier));
+        OleInvoiceDocument invoiceDocument = invoiceDao.getDocumentByInvoiceId(invoiceIdentifier);
         return invoiceDocument;
     }
 
@@ -1879,70 +1891,77 @@ public class OleInvoiceServiceImpl extends InvoiceServiceImpl implements OleInvo
         return invoiceDocument;
     }
 
-    public OleInvoiceDocument populateInvoiceItems (OleInvoiceDocument invoiceDocument) {
+    public OleInvoiceDocument populateInvoiceItems (OleInvoiceDocument invoiceDocument, List<OlePurchaseOrderDocument> olePurchaseOrderDocumentList) {
         //int invoiceItemNumberCnt = getLastItemLineNumber(invoiceDocument);
 
         LOG.debug("Inside populateInvoiceItems method ");
         List<OleInvoiceItem> items = new ArrayList<>();
         Boolean receiveRequired = false;
         HashMap<String, ExpiredOrClosedAccountEntry> expiredOrClosedAccountList = new HashMap<>();
-        BigDecimal addChargeItem=BigDecimal.ZERO;
-        for (OlePurchaseOrderDocument po : invoiceDocument.getPurchaseOrderDocuments()) {
-            if(po.isReceivingDocumentRequiredIndicator()) {
-                receiveRequired=true;
-            }
+        BigDecimal addChargeItem = BigDecimal.ZERO;
+        for (OlePurchaseOrderDocument olePurchaseOrderDocument : olePurchaseOrderDocumentList){
+        if (olePurchaseOrderDocument.isReceivingDocumentRequiredIndicator()) {
+            receiveRequired = true;
+        }
             /* if(this.encumberedItemExistsForInvoicing(po))
             {*/
-            for (OlePurchaseOrderItem poi : (List<OlePurchaseOrderItem>) po.getItems()) {
-                // check to make sure it's eligible for payment (i.e. active and has encumbrance available
-                //if (this.poItemEligibleForAp(invoiceDocument, poi)) {
-                if (poi.isItemForInvoice()) {
-                    OleInvoiceItem invoiceItem = new OleInvoiceItem(poi, invoiceDocument, expiredOrClosedAccountList);
-                    // invoiceItem.setItemLineNumber(++invoiceItemNumberCnt);
-                    invoiceItem.setClosePurchaseOrderIndicator(po.isClosePO());
-                    invoiceItem.setReopenPurchaseOrderIndicator(po.getIsReOpenPO());
-                    PurchasingCapitalAssetItem purchasingCAMSItem = po.getPurchasingCapitalAssetItemByItemIdentifier(poi.getItemIdentifier());
-                    if (purchasingCAMSItem != null) {
-                        invoiceItem.setCapitalAssetTransactionTypeCode(purchasingCAMSItem.getCapitalAssetTransactionTypeCode());
-                    }
-                    invoiceItem.setUseTaxIndicator(po.isUseTaxIndicator());
-                    invoiceItem.setPurchaseOrderIdentifier(po.getPurapDocumentIdentifier());
-                    invoiceItem.setPostingYear(po.getPostingYear());
-                    invoiceItem.setAccountsPayablePurchasingDocumentLinkIdentifier(po.getAccountsPayablePurchasingDocumentLinkIdentifier());
-                    invoiceItem.setReceivingDocumentRequiredIndicator(po.isReceivingDocumentRequiredIndicator());
-                    if(invoiceItem.getItemType().isAdditionalChargeIndicator() && invoiceItem.getExtendedPrice()!=null){
-                        addChargeItem =addChargeItem.add(invoiceItem.getExtendedPrice().bigDecimalValue());
-                    }
-                    // copy usetaxitems over
-                    invoiceItem.getUseTaxItems().clear();
-                    for (PurApItemUseTax useTax : poi.getUseTaxItems()) {
-                        invoiceItem.getUseTaxItems().add(useTax);
-                    }
-                    invoiceItem.setPurchaseOrderEndDate(invoiceDocument.getPurchaseOrderDocuments().get(0).getPoEndDate());
-                    //SpringContext.getBean(PurapAccountingService.class).updateItemAccountAmounts(invoiceItem);
-                 //   this.calculateAccount(invoiceItem);
-                    invoiceDocument.getItems().add(invoiceItem);
-                    if (LOG.isDebugEnabled()) {
-                        LOG.debug("Size**********************" + invoiceDocument.getItems().size());
-                    }
+        for (OlePurchaseOrderItem poi : (List<OlePurchaseOrderItem>) olePurchaseOrderDocument.getItems()) {
+            // check to make sure it's eligible for payment (i.e. active and has encumbrance available
+            //if (this.poItemEligibleForAp(invoiceDocument, poi)) {
+            if (poi.isItemForInvoice()) {
+                OleInvoiceItem invoiceItem = new OleInvoiceItem(poi, invoiceDocument, expiredOrClosedAccountList);
+                // invoiceItem.setItemLineNumber(++invoiceItemNumberCnt);
+                invoiceItem.setClosePurchaseOrderIndicator(olePurchaseOrderDocument.isClosePO());
+                invoiceItem.setReopenPurchaseOrderIndicator(olePurchaseOrderDocument.getIsReOpenPO());
+                PurchasingCapitalAssetItem purchasingCAMSItem = olePurchaseOrderDocument.getPurchasingCapitalAssetItemByItemIdentifier(poi.getItemIdentifier());
+                if (purchasingCAMSItem != null) {
+                    invoiceItem.setCapitalAssetTransactionTypeCode(purchasingCAMSItem.getCapitalAssetTransactionTypeCode());
+                }
+                invoiceItem.setUseTaxIndicator(olePurchaseOrderDocument.isUseTaxIndicator());
+                invoiceItem.setPurchaseOrderIdentifier(olePurchaseOrderDocument.getPurapDocumentIdentifier());
+                invoiceItem.setPostingYear(olePurchaseOrderDocument.getPostingYear());
+                invoiceItem.setAccountsPayablePurchasingDocumentLinkIdentifier(olePurchaseOrderDocument.getAccountsPayablePurchasingDocumentLinkIdentifier());
+                invoiceItem.setReceivingDocumentRequiredIndicator(olePurchaseOrderDocument.isReceivingDocumentRequiredIndicator());
+                if (!poi.getOpenQuantity().equals("0.00")) {
+                    BigDecimal copiesOrdered = new BigDecimal(invoiceItem.getOleCopiesOrdered());
+                    BigDecimal outStandingQuantity = new BigDecimal(poi.getOpenQuantity());
+                    BigDecimal updatedOpenQuantity = outStandingQuantity.subtract(copiesOrdered);
+                    invoiceItem.setOleOpenQuantity(String.valueOf(updatedOpenQuantity));
+                } else {
+                    invoiceItem.setOleOpenQuantity(poi.getOpenQuantity());
+                }
+                if (invoiceItem.getItemType().isAdditionalChargeIndicator() && invoiceItem.getExtendedPrice() != null) {
+                    addChargeItem = addChargeItem.add(invoiceItem.getExtendedPrice().bigDecimalValue());
+                }
+                // copy usetaxitems over
+                invoiceItem.getUseTaxItems().clear();
+                for (PurApItemUseTax useTax : poi.getUseTaxItems()) {
+                    invoiceItem.getUseTaxItems().add(useTax);
+                }
+                invoiceItem.setPurchaseOrderEndDate(olePurchaseOrderDocument.getPoEndDate());
+                //SpringContext.getBean(PurapAccountingService.class).updateItemAccountAmounts(invoiceItem);
+                //   this.calculateAccount(invoiceItem);
+                invoiceDocument.getItems().add(invoiceItem);
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Size**********************" + invoiceDocument.getItems().size());
                 }
             }
-            invoiceDocument.setTotalDollarAmount(invoiceDocument.getTotalDollarAmount().add(po.getTotalDollarAmount()));
         }
-
+        invoiceDocument.setTotalDollarAmount(invoiceDocument.getTotalDollarAmount().add(olePurchaseOrderDocument.getTotalDollarAmount()));
+        }
         //  List<OleInvoiceItem> item = invoiceDocument.getItems();
        /* for(OleInvoiceItem invoiceditem : item){
             if(invoiceditem.getItemType().isAdditionalChargeIndicator() && invoiceditem.getExtendedPrice()!=null){
                 addChargeItem =addChargeItem.add(invoiceditem.getExtendedPrice().bigDecimalValue());
             }
         }*/
-        if (invoiceDocument.getTotalDollarAmount() != null ) {
+        if (invoiceDocument.getTotalDollarAmount() != null) {
             invoiceDocument.setInvoiceItemTotal(invoiceDocument.getTotalDollarAmount().subtract(new KualiDecimal(addChargeItem)).toString());
             invoiceDocument.setDocumentTotalAmount(invoiceDocument.getTotalDollarAmount().toString());
         }
         invoiceDocument.setDocumentTotalAmount(invoiceDocument.getInvoicedItemTotal());
         // invoiceDocument.setPurchaseOrderDocuments(new ArrayList<OlePurchaseOrderDocument>());
-        invoiceDocument.getPurchaseOrderDocuments().clear();
+        invoiceDocument.getPurchaseOrderDocuments().removeAll(olePurchaseOrderDocumentList);
         invoiceDocument.setReceivingDocumentRequiredIndicator(receiveRequired);
         return invoiceDocument;
     }
@@ -1955,61 +1974,81 @@ public class OleInvoiceServiceImpl extends InvoiceServiceImpl implements OleInvo
         List<PurApAccountingLine> purApAccountingLines = purapItem.getSourceAccountingLines();
         BigDecimal totalPercent = BigDecimal.ZERO;
         BigDecimal totalAmt = BigDecimal.ZERO;
+        BigDecimal sumAmt = BigDecimal.ZERO;
+        BigDecimal sumPercentage = BigDecimal.ZERO;
+        int counter = 0;
+        int accLineSize = purApAccountingLines.size();
+        PurApAccountingLine lastAccount = null;
         for (PurApAccountingLine account : purApAccountingLines) {
             if (purapItem.getTotalAmount() != null && !purapItem.getTotalAmount().equals(KualiDecimal.ZERO)) {
                 if (account.getAccountLinePercent() != null && (account.getAmount() == null || account.getAmount().equals(KualiDecimal.ZERO))) {
                     BigDecimal percent = account.getAccountLinePercent().divide(new BigDecimal(100));
-                    account.setAmount((purapItem.getTotalAmount().multiply(new KualiDecimal(percent))));
+                    account.setAmount(new KualiDecimal(purapItem.getTotalAmount().bigDecimalValue().multiply(percent)));
                 } else if (account.getAmount() != null && account.getAmount().isNonZero() && account.getAccountLinePercent() == null) {
                     KualiDecimal dollar = account.getAmount().multiply(new KualiDecimal(100));
-                    BigDecimal dollarToPercent = dollar.bigDecimalValue().divide((purapItem.getTotalAmount().bigDecimalValue()), 0, RoundingMode.FLOOR);
+                    BigDecimal dollarToPercent = dollar.bigDecimalValue().divide((purapItem.getTotalAmount().bigDecimalValue()), 2, RoundingMode.FLOOR);
                     account.setAccountLinePercent(dollarToPercent);
                 } else if (account.getAmount() != null && account.getAmount().isZero() && account.getAccountLinePercent() == null) {
                     account.setAccountLinePercent(new BigDecimal(0));
                 } else if((account.getAmount()!=null&&account.getAccountLinePercent() != null) ||
                         (account.getAmount()!=null&& account.getAccountLinePercent().intValue()== 100)){
-                    BigDecimal percent = account.getAccountLinePercent().divide(new BigDecimal(100));
-                    account.setAmount((purapItem.getTotalAmount().multiply(new KualiDecimal(percent))));
+                    if (counter == accLineSize - 1) {
+                        account.setAccountLinePercent(new BigDecimal(100).subtract(sumPercentage));
+                        account.setAmount(purapItem.getTotalAmount().subtract(new KualiDecimal(sumAmt)));
+                    } else {
+                        BigDecimal percent = account.getAccountLinePercent().divide(new BigDecimal(100));
+                        account.setAmount(new KualiDecimal(purapItem.getTotalAmount().bigDecimalValue().multiply(percent)));
+                }
+
                 }
                 totalPercent = totalPercent.add(account.getAccountLinePercent());
                 totalAmt = totalAmt.add(account.getAmount().bigDecimalValue());
+                lastAccount = account;
             } else {
                 account.setAmount(KualiDecimal.ZERO);
             }
+            ++counter;
+            sumAmt = sumAmt.add(account.getAmount().bigDecimalValue());
+            sumPercentage = sumPercentage.add(account.getAccountLinePercent());
         }
         // If Total Percent or Total Amount mis matches,percentage is divided across accounting lines.
         if(totalPercent.intValue() != 100 ||
                 (purapItem.getTotalAmount()!=null && totalAmt.compareTo(purapItem.getTotalAmount().bigDecimalValue())!=0)){
-            for (PurApAccountingLine account : purApAccountingLines) {
-                if (purapItem.getTotalAmount() != null && !purapItem.getTotalAmount().equals(KualiDecimal.ZERO)) {
-                    BigDecimal percent = BigDecimal.ONE.divide(new BigDecimal(purApAccountingLines.size()), BigDecimal.ROUND_CEILING, BigDecimal.ROUND_HALF_UP);
-                    account.setAmount((purapItem.getTotalAmount().multiply(new KualiDecimal(percent))));
-                } else {
-                    account.setAmount(KualiDecimal.ZERO);
-                }
+
+           // for (PurApAccountingLine account : purApAccountingLines) {
+              //  if (purapItem.getTotalAmount() != null && !purapItem.getTotalAmount().equals(KualiDecimal.ZERO)) {
+                   // BigDecimal percent = BigDecimal.ONE.divide(new BigDecimal(purApAccountingLines.size()), BigDecimal.ROUND_CEILING, BigDecimal.ROUND_HALF_UP);
+                   // account.setAmount((purapItem.getTotalAmount().multiply(new KualiDecimal(percent))));
+
+            if(lastAccount != null) {
+                lastAccount.setAccountLinePercent(lastAccount.getAccountLinePercent().add(new BigDecimal(100).subtract(totalPercent)));
+                lastAccount.setAmount(lastAccount.getAmount().add(new KualiDecimal(purapItem.getTotalAmount().bigDecimalValue().subtract(totalAmt))));
             }
+              //  } else {
+              //      lastAccount.setAmount(KualiDecimal.ZERO);
+              //  }
+          //  }
         }
 
     }
 
     @Override
-    public void convertPOItemToInvoiceItem (OleInvoiceDocument oleInvoiceDocument) {
+    public void convertPOItemToInvoiceItem(OleInvoiceDocument oleInvoiceDocument, OlePurchaseOrderDocument olePurchaseOrderDocument) {
         boolean poItemsSelected = false;
-        for (OlePurchaseOrderDocument po : oleInvoiceDocument.getPurchaseOrderDocuments()) {
-            for (OlePurchaseOrderItem poi : (List<OlePurchaseOrderItem>) po.getItems()) {
-                if (poi.isItemForInvoice()) {
-                    poItemsSelected = true;
-                    break;
-                }
+
+        for (OlePurchaseOrderItem poi : (List<OlePurchaseOrderItem>) olePurchaseOrderDocument.getItems()) {
+            if (poi.isItemForInvoice()) {
+                poItemsSelected = true;
+                break;
             }
         }
+
         if (poItemsSelected) {
-            oleInvoiceDocument = this.populateInvoiceItems(oleInvoiceDocument);
+            oleInvoiceDocument = this.populateInvoiceItems(oleInvoiceDocument, Arrays.asList(olePurchaseOrderDocument));
             //   oleInvoiceDocument = this.populateInvoiceDocument(oleInvoiceDocument);
             /*SpringContext.getBean(PurapAccountingService.class).updateAccountAmounts(oleInvoiceDocument);*/
-        }
-        else {
-            oleInvoiceDocument.setPurchaseOrderDocuments(new ArrayList<OlePurchaseOrderDocument>());
+        } else {
+            oleInvoiceDocument.getPurchaseOrderDocuments().remove(olePurchaseOrderDocument);
             GlobalVariables.getMessageMap().putError(OleSelectConstant.PROCESS_ITEM_SECTION_ID, OLEKeyConstants.ERROR_NO_PO_SELECTED);
         }
     }
@@ -2111,7 +2150,6 @@ public class OleInvoiceServiceImpl extends InvoiceServiceImpl implements OleInvo
             }
         }
         for (OleInvoiceItem subscriptionInvItem : subscriptionInvItems) {
-
             if (subscriptionInvItem.getPoItemIdentifier() != null) {
                 Map matchPOItem = new HashMap();
                 matchPOItem.put("poItemIdentifier", subscriptionInvItem.getPoItemIdentifier());
@@ -2124,18 +2162,20 @@ public class OleInvoiceServiceImpl extends InvoiceServiceImpl implements OleInvo
                 }
 
                 for (OleInvoiceItem oleInvoiceItem : subscriptionInvoicedItems) {
+                    if(!oleInvoiceItem.getItemIdentifier().equals(subscriptionInvItem.getItemIdentifier())) {
 
-                    if (oleInvoiceItem.getPoItemIdentifier().equals(subscriptionInvItem.getPoItemIdentifier())) {
+                        if (oleInvoiceItem.getPoItemIdentifier().equals(subscriptionInvItem.getPoItemIdentifier())) {
 
-                        if (subscriptionInvItem.getSubscriptionFromDate().compareTo(oleInvoiceItem.getSubscriptionFromDate()) >= 0 && subscriptionInvItem.getSubscriptionFromDate().compareTo(oleInvoiceItem.getSubscriptionToDate()) <= 0) {
-                            isOverlap = true;
-                            overlapInvDocumentList.add((OleInvoiceDocument) oleInvoiceItem.getInvoiceDocument());
-                        } else if (subscriptionInvItem.getSubscriptionToDate().compareTo(oleInvoiceItem.getSubscriptionFromDate()) >= 0 && subscriptionInvItem.getSubscriptionToDate().compareTo(oleInvoiceItem.getSubscriptionToDate()) <= 0) {
-                            isOverlap = true;
-                            overlapInvDocumentList.add((OleInvoiceDocument) oleInvoiceItem.getInvoiceDocument());
-                        } else if ((subscriptionInvItem.getSubscriptionFromDate().compareTo(oleInvoiceItem.getSubscriptionFromDate()) < 0) && (subscriptionInvItem.getSubscriptionToDate().compareTo(oleInvoiceItem.getSubscriptionToDate()) > 0)) {
-                            isOverlap = true;
-                            overlapInvDocumentList.add((OleInvoiceDocument) oleInvoiceItem.getInvoiceDocument());
+                            if (subscriptionInvItem.getSubscriptionFromDate().compareTo(oleInvoiceItem.getSubscriptionFromDate()) >= 0 && subscriptionInvItem.getSubscriptionFromDate().compareTo(oleInvoiceItem.getSubscriptionToDate()) <= 0) {
+                                isOverlap = true;
+                                overlapInvDocumentList.add((OleInvoiceDocument) oleInvoiceItem.getInvoiceDocument());
+                            } else if (subscriptionInvItem.getSubscriptionToDate().compareTo(oleInvoiceItem.getSubscriptionFromDate()) >= 0 && subscriptionInvItem.getSubscriptionToDate().compareTo(oleInvoiceItem.getSubscriptionToDate()) <= 0) {
+                                isOverlap = true;
+                                overlapInvDocumentList.add((OleInvoiceDocument) oleInvoiceItem.getInvoiceDocument());
+                            } else if ((subscriptionInvItem.getSubscriptionFromDate().compareTo(oleInvoiceItem.getSubscriptionFromDate()) < 0) && (subscriptionInvItem.getSubscriptionToDate().compareTo(oleInvoiceItem.getSubscriptionToDate()) > 0)) {
+                                isOverlap = true;
+                                overlapInvDocumentList.add((OleInvoiceDocument) oleInvoiceItem.getInvoiceDocument());
+                            }
                         }
                     }
                 }
@@ -2231,7 +2271,7 @@ public class OleInvoiceServiceImpl extends InvoiceServiceImpl implements OleInvo
      * @return isDuplicationExists
      */
 
-    public boolean isDuplicationExists(OleInvoiceDocument invoiceDocument, OLEInvoiceForm invoiceForm, boolean isBlanketApprove) {
+    public boolean isDuplicationExists(OleInvoiceDocument invoiceDocument, OLEInvoiceForm invoiceForm, String actionName) {
         LOG.debug("Inside method isDuplicationExists()");
         boolean isDuplicationExists = false;
         if(invoiceDocument.getInvoiceNumber()!=null && !invoiceDocument.getInvoiceNumber().equalsIgnoreCase("")){
@@ -2257,15 +2297,21 @@ public class OleInvoiceServiceImpl extends InvoiceServiceImpl implements OleInvo
                     }
                 }
             }
-            if (isDuplicationExists && !isBlanketApprove) {
-                duplicationMessage.append(OleSelectConstant.QUES_FOR_DUPLICATE_INVOICE);
+            if (isDuplicationExists && actionName.equals("save")) {
+                duplicationMessage.append(OleSelectConstant.QUES_FOR_DUPLICATE_INVOICE_FOR_SAVE);
                 invoiceDocument.setDuplicateFlag(true);
                 invoiceForm.setDuplicationMessage(duplicationMessage.toString());
             }
-            else if (isDuplicationExists && isBlanketApprove) {
-                duplicationMessage.append(OleSelectConstant.QUES_FOR_DUPLICATE_INVOICE);
+            else if (isDuplicationExists && actionName.equals("route")) {
+                duplicationMessage.append(OleSelectConstant.QUES_FOR_DUPLICATE_INVOICE_FOR_SUBMIT);
+                invoiceDocument.setDuplicateApproveFlag(true);
+                invoiceForm.setDuplicationMessage(duplicationMessage.toString());
+            }else if (isDuplicationExists && actionName.equals("approve")) {
+                duplicationMessage.append(OleSelectConstant.QUES_FOR_DUPLICATE_INVOICE_FOR_APPROVE);
                 invoiceDocument.setDuplicateApproveFlag(true);
                 invoiceForm.setDuplicationApproveMessage(duplicationMessage.toString());
+            } else {
+                invoiceForm.setDuplicationMessage(duplicationMessage.toString());
             }
         }
         LOG.debug("Leaving method isDuplicationExists()");
@@ -2874,17 +2920,21 @@ public class OleInvoiceServiceImpl extends InvoiceServiceImpl implements OleInvo
     public void  calculateProrateForPOLevel(OleInvoiceDocument inv) {
         List<Integer> poIdList = new ArrayList<>();
         BigDecimal totalUnitPrice = BigDecimal.ZERO;
+        List<OleInvoiceItem> oleInvoiceItemList = new ArrayList<OleInvoiceItem>();
         int noOfCopies = 0;
         for(OleInvoiceItem item : (List<OleInvoiceItem>)inv.getItems()){
             if(item.getItemTypeCode().equals(OLEConstants.ITEM)){
                 poIdList.add(item.getPurchaseOrderIdentifier());
                 noOfCopies += Integer.parseInt(item.getOleCopiesOrdered());
             }
+            else {
+                oleInvoiceItemList.add(item);
+            }
         }
         List<OleInvoiceItem> removeFromInvoiceItemList = new ArrayList<OleInvoiceItem>();
         List<OleInvoiceItem> addToInvoiceItemList = new ArrayList<OleInvoiceItem>();
         int invoiceItemsize = poIdList.size();
-        for(OleInvoiceItem item : (List<OleInvoiceItem>)inv.getItems()){
+        for(OleInvoiceItem item : oleInvoiceItemList){
             if(!item.getItemTypeCode().equals(OLEConstants.ITEM) && item.getItemUnitPrice() != null) {
                 accountingAmount = KualiDecimal.ZERO;
                 percentage = BigDecimal.ZERO;
@@ -2914,7 +2964,12 @@ public class OleInvoiceServiceImpl extends InvoiceServiceImpl implements OleInvo
                         OleInvoiceItem oleInvoiceItem = (OleInvoiceItem) ObjectUtils.deepCopy(item);
                         KualiDecimal totalAmount = ((OleInvoiceItem) inv.getItems().get(i)).getTotalAmount();
                         String listPrice = (String)((OleInvoiceItem) inv.getItems().get(i)).getListPrice();
-                        itemUnitPrice = (totalAmount.bigDecimalValue().multiply(item.getItemUnitPrice())).divide(new BigDecimal(inv.getItemTotal()),2,RoundingMode.HALF_UP);
+                        if (inv.getItemTotal().contains("(")) {
+                            itemUnitPrice = (totalAmount.bigDecimalValue().multiply(item.getItemUnitPrice())).divide(new BigDecimal(inv.getInvoicedItemTotal()), 2, RoundingMode.HALF_UP).abs();
+                        }
+                        else {
+                            itemUnitPrice = (totalAmount.bigDecimalValue().multiply(item.getItemUnitPrice())).divide(new BigDecimal(inv.getItemTotal()), 2, RoundingMode.HALF_UP);
+                        }
                         if((invoiceItemsize-1) == i) {
                             oleInvoiceItem.setItemUnitPrice(totalItemUnitPrice.subtract(totalUnitPrice));
                         } else {
@@ -2942,6 +2997,7 @@ public class OleInvoiceServiceImpl extends InvoiceServiceImpl implements OleInvo
                     }
                     removeFromInvoiceItemList.add(item);
                 }
+                totalUnitPrice = BigDecimal.ZERO;
             }
         }
         inv.getItems().removeAll(removeFromInvoiceItemList);
@@ -3026,6 +3082,17 @@ public class OleInvoiceServiceImpl extends InvoiceServiceImpl implements OleInvo
 
         return newAccounts;
 
+    }
+
+    public List<String> getRecurringOrderTypes(){
+        List<String> continuingOrderType=new ArrayList<>();
+        continuingOrderType.add(PurapConstants.ORDER_TYPE_STANDING);
+        continuingOrderType.add(PurapConstants.ORDER_TYPE_SUBSCRIPTION);
+        continuingOrderType.add(PurapConstants.ORDER_TYPE_MEMBERSHIP);
+        continuingOrderType.add(PurapConstants.ORDER_TYPE_BLANKET);
+        continuingOrderType.add(PurapConstants.ORDER_TYPE_INTEGRATING_RESOURCE);
+        continuingOrderType.add(PurapConstants.ORDER_TYPE_CONTINUING);
+        return continuingOrderType;
     }
 
 }

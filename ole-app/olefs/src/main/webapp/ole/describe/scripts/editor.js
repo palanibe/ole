@@ -21,6 +21,19 @@ jq(document).ready(function () {
         }
     });
 
+    jq("input#oleItemNumberOfPieces_control").live('keydown',function(event) {
+        if ( event.keyCode == 46 || event.keyCode == 8 || event.keyCode == 9 || event.keyCode == 27 || event.keyCode == 13 ||
+            (event.keyCode == 65 && event.ctrlKey === true) ||
+            (event.keyCode >= 35 && event.keyCode <= 39)) {
+            return;
+        }
+        else {
+            if (event.shiftKey || (event.keyCode < 48 || event.keyCode > 57) && (event.keyCode < 96 || event.keyCode > 105 )) {
+                event.preventDefault();
+            }
+        }
+    });
+
     window.focus = function(a){
 
         try{
@@ -484,22 +497,16 @@ function addInstance() {
     jq('#hdnDocType_control').val("holdings");
     jq('#hdnDocFormat_control').val("oleml");
     jq('#hiddenDocId_control').val("");
-    /*submitForm('load', null, null, true, function(){
-     jq("#holdingsItemTree_tree").jstree("create",(jq("#holdingsItemTree_tree").jstree("create",-1,false,"Holdings",false,true)),false,"Item",false,true);
-     });*/
-    submitForm('load', null, null, null, null);
+    var bibId = jq("#hiddenBibId_control").val();
+    viewHoldingsEdit("",bibId,null,true);
 }
 function addEInstance() {
     jq('#hdnDocCat_control').val("work");
     jq('#hdnDocType_control').val("eHoldings");
     jq('#hdnDocFormat_control').val("oleml");
     jq('#hiddenDocId_control').val("");
-    /*submitForm('load', null, null, true, function(){
-     jq("#holdingsItemTree_tree").jstree("create",(jq("#holdingsItemTree_tree").jstree("create",-1,false,"Holdings",false,true)),false,"Item",false,true);
-     });*/
-    submitForm('load', null, null, null, function () {
-        jq('#Editor_Footer').hide();
-    });
+    var bibId = jq("#hiddenBibId_control").val();
+    viewEHoldingsEdit("",bibId,null,true);
 }
 
 function deleteBib() {
@@ -606,10 +613,7 @@ jq(document).ready(function () {
                                             jq('#hiddenHoldingsId_control').val("");
                                         }
                                         jq('#hiddenDocId_control').val("");
-
-                                        submitForm('load', null, null, null, function () {
-                                            //jq("#holdingsItemTree_tree").jstree('select_node', jq("#holdingsItemTree_tree").jstree("create", obj, false, "Item", false, true));
-                                        });
+                                        viewItemEdit( "",jq('#hiddenBibId_control').val(),jq('#hiddenHoldingsId_control').val(),jq('#hdnEditable_control').val());
                                     }
                                 }
                             };
@@ -630,10 +634,7 @@ jq(document).ready(function () {
                                         jq('#hdnDocFormat_control').val("oleml");
                                         jq('#hiddenHoldingsId_control').val(node.attr("class").split(' ')[0]);
                                         jq('#hiddenDocId_control').val("");
-
-                                        submitForm('load', null, null, null, function () {
-                                            //jq("#holdingsItemTree_tree").jstree('select_node', jq("#holdingsItemTree_tree").jstree("create", obj, false, "Item", false, true));
-                                        });
+                                        viewItemEdit( "",jq('#hiddenBibId_control').val(),jq('#hiddenHoldingsId_control').val(),jq('#hdnEditable_control').val());
                                     }
                                 }
                             };

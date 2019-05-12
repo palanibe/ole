@@ -159,30 +159,6 @@
     <bean id="OleFundLookupDocument-workflowAttributes-parentBean" abstract="true" parent="WorkflowAttributes"/>
     
      
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-   
-   
-   
-    
-    
-    
-    
-    
-    
-    
     <!-- Business Object Inquiry Definition -->
 
 	<bean id="OleFundLookupDocument-inquiryDefinition" parent="OleFundLookupDocument-inquiryDefinition-parentBean" />

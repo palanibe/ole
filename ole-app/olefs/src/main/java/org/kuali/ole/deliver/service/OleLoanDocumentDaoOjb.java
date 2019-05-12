@@ -6,13 +6,16 @@ import org.apache.ojb.broker.query.Criteria;
 import org.apache.ojb.broker.query.QueryByCriteria;
 import org.apache.ojb.broker.query.QueryFactory;
 import org.kuali.ole.OLEConstants;
+import org.kuali.ole.deliver.DeliverConstants;
 import org.kuali.ole.deliver.bo.*;
 import org.kuali.ole.deliver.bo.OLEDeliverNotice;
 import org.kuali.ole.deliver.calendar.service.DateUtil;
 import org.kuali.ole.sys.context.SpringContext;
+import org.kuali.rice.core.api.config.property.ConfigContext;
 import org.kuali.rice.core.framework.persistence.ojb.dao.PlatformAwareDaoBaseOjb;
 
 import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 import org.kuali.rice.krad.service.BusinessObjectService;
@@ -228,6 +231,16 @@ public class OleLoanDocumentDaoOjb extends PlatformAwareDaoBaseOjb {
             return oleDeliverNoticeList.get(0);
         }
         return null;
+    }
+
+    public Collection<Object> getOnHoldCourtesyNotice() {
+        Criteria criteria = new Criteria();
+        criteria.addEqualTo("noticeType",OLEConstants.ONHOLD_COURTESY_NOTICE);
+        criteria.addLessOrEqualThan("noticeToBeSendDate", new Timestamp(System.currentTimeMillis()));
+        QueryByCriteria query = QueryFactory.newQuery(OLEDeliverNotice.class, criteria);
+        query.addOrderBy("patronId");
+        Collection results = getPersistenceBrokerTemplate().getCollectionByQuery(query);
+        return results;
     }
 
     public OleDeliverRequestBo getHoldExpiredRequests(String itemId) {
@@ -507,7 +520,7 @@ public class OleLoanDocumentDaoOjb extends PlatformAwareDaoBaseOjb {
 
     public Collection<OleDeliverRequestHistoryRecord> getDeliverRequestHistoryRecords(String itemBarcode) {
         Criteria criteria = new Criteria();
-        criteria.addEqualTo(OLEConstants.OleDeliverRequest.ITEM_ID, itemBarcode);
+        criteria.addEqualTo(OLEConstants.ITEM_BARCODE, itemBarcode);
         QueryByCriteria query = QueryFactory.newQuery(OleDeliverRequestHistoryRecord.class, criteria);
         query.addOrderByDescending(OLEConstants.ARCHIVE_DATE);
         Collection results = getPersistenceBrokerTemplate().getCollectionByQuery(query);
@@ -538,6 +551,172 @@ public class OleLoanDocumentDaoOjb extends PlatformAwareDaoBaseOjb {
         QueryByCriteria query = QueryFactory.newQuery(OLEDeliverNoticeHistory.class, criteria);
         Collection results = getPersistenceBrokerTemplate().getCollectionByQuery(query);
         return results;
+    }
+
+    public List<FeeType> getFeeTypes(Criteria criteria) {
+        QueryByCriteria query = QueryFactory.newQuery(FeeType.class, criteria);
+        List<FeeType> results = (List<FeeType>) getPersistenceBrokerTemplate().getCollectionByQuery(query);
+        return results;
+    }
+
+    public List<FeeType> getFeeTypeDocument(Criteria criteria) {
+        QueryByCriteria query = QueryFactory.newQuery(FeeType.class, criteria);
+        List<FeeType> results = (List<FeeType>)getPersistenceBrokerTemplate().getCollectionByQuery(query);
+        return results;
+
+    }
+
+    public OleDeliverRequestBo getPrioritizedRequest(String itemId) {
+        Criteria criteria = new Criteria();
+        criteria.addGreaterThan("requestExpiryDate", new Timestamp(System.currentTimeMillis()));
+        criteria.addEqualTo("itemId", itemId);
+        QueryByCriteria query = QueryFactory.newQuery(OleDeliverRequestBo.class, criteria);
+        query.addOrderBy("borrowerQueuePosition");
+        List<OleDeliverRequestBo> oleDeliverRequestBoList = (List<OleDeliverRequestBo>) getPersistenceBrokerTemplate().getCollectionByQuery(query);
+        return CollectionUtils.isNotEmpty(oleDeliverRequestBoList) ? oleDeliverRequestBoList.get(0) : null;
+    }
+
+    public List<OleDeliverRequestHistoryRecord> getExpiredRequest(String itemBarcode, Date loanCreatedDate) {
+        List<OleDeliverRequestHistoryRecord> oleDeliverRequestHistoryRecords = new ArrayList<>();
+        if(loanCreatedDate != null) {
+            Criteria criteria = new Criteria();
+            criteria.addEqualTo(OLEConstants.ITEM_BARCODE, itemBarcode);
+            criteria.addEqualTo(OLEConstants.OleDeliverRequest.REQUEST_OUTCOME_STATUS, ConfigContext.getCurrentContextConfig().getProperty(OLEConstants.REQUEST_EXPIRED));
+            java.sql.Date loanCreateDate = new java.sql.Date(loanCreatedDate.getTime());
+            criteria.addBetween(OLEConstants.ARCHIVE_DATE, loanCreateDate, new java.sql.Date(System.currentTimeMillis()));
+            QueryByCriteria query = QueryFactory.newQuery(OleDeliverRequestHistoryRecord.class, criteria);
+            oleDeliverRequestHistoryRecords = (List<OleDeliverRequestHistoryRecord>) getPersistenceBrokerTemplate().getCollectionByQuery(query);
+        }
+        return oleDeliverRequestHistoryRecords;
+    }
+
+    public List<OleCirculationHistory> getReturnedItem(Criteria criteria) {
+        QueryByCriteria query = QueryFactory.newQuery(OleCirculationHistory.class, criteria);
+        List<OleCirculationHistory>  results = ( List<OleCirculationHistory> )getPersistenceBrokerTemplate().getCollectionByQuery(query);
+        return results;
+    }
+
+    public OleCirculationHistory retrieveCircHistoryRecord(String itemUUID ) {
+        Criteria criteria = new Criteria();
+        criteria.addEqualTo("itemUuid", itemUUID);
+        criteria.addNotNull("checkInDate");
+        criteria.addOrderByDescending("checkInDate");
+        QueryByCriteria query = QueryFactory.newQuery(OleCirculationHistory.class, criteria);
+        List<OleCirculationHistory> results = (List<OleCirculationHistory>) getPersistenceBrokerTemplate().getCollectionByQuery(query);
+        return CollectionUtils.isNotEmpty(results) ? results.get(0) : null;
+    }
+
+    public List<OLEDeliverNoticeHistory> getLaonHistoryRecords(java.sql.Date loanHistoryToDate) {
+        LOG.info("getLaonHistoryRecords() started");
+        Criteria criteria = new Criteria();
+
+        String dbVendor = getProperty("db.vendor");
+        if (dbVendor.equals("mysql")) {
+            if (loanHistoryToDate != null) {
+                criteria.addLessOrEqualThan(DeliverConstants.NOTICE_SENT_DATE, loanHistoryToDate);
+            }
+        }
+        else {
+            if (loanHistoryToDate != null) {
+                SimpleDateFormat formatter=new SimpleDateFormat("MM/dd/yyyy");
+                String date = formatter.format(loanHistoryToDate);
+                criteria.addLessOrEqualThan(DeliverConstants.NOTICE_SENT_DATE ,formatDateForOracle(date));
+            }
+        }
+        QueryByCriteria qbc = new QueryByCriteria(OLEDeliverNoticeHistory.class, criteria);
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("getLaonHistoryRecords() Query criteria is " + criteria.toString());
+        }
+        List<OLEDeliverNoticeHistory>  oleDeliverNoticeHistoryList = (List<OLEDeliverNoticeHistory>) getPersistenceBrokerTemplate().getCollectionByQuery(qbc);
+        LOG.info("getLaonHistoryRecords() ended.");
+        return oleDeliverNoticeHistoryList;
+    }
+
+    public List<OleRenewalHistory> getRenewalHistoryRecords(java.sql.Date renewalHistoryToDate) {
+        LOG.info("getRenewalHistoryRecords() started");
+        Criteria criteria = new Criteria();
+
+        String dbVendor = getProperty("db.vendor");
+        if (dbVendor.equals("mysql")) {
+            if (renewalHistoryToDate != null) {
+                criteria.addLessOrEqualThan(DeliverConstants.ITEM_RENEWED_DATE, renewalHistoryToDate);
+            }
+        }
+        else {
+            if (renewalHistoryToDate != null) {
+                SimpleDateFormat formatter=new SimpleDateFormat("MM/dd/yyyy");
+                String date = formatter.format(renewalHistoryToDate);
+                criteria.addLessOrEqualThan(DeliverConstants.ITEM_RENEWED_DATE ,formatDateForOracle(date));
+            }
+        }
+        QueryByCriteria qbc = new QueryByCriteria(OleRenewalHistory.class, criteria);
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("getRenewalHistoryRecords() Query criteria is " + criteria.toString());
+        }
+        List<OleRenewalHistory>  renewalHistoryList = (List<OleRenewalHistory>) getPersistenceBrokerTemplate().getCollectionByQuery(qbc);
+        LOG.info("getRenewalHistoryRecords() ended.");
+        return renewalHistoryList;
+    }
+
+    public List<OLEReturnHistoryRecord> getReturnHistoryRecords(java.sql.Date returnHistoryToDate) {
+        LOG.info("getReturnHistoryRecords() started");
+        Criteria criteria = new Criteria();
+
+        String dbVendor = getProperty("db.vendor");
+        if (dbVendor.equals("mysql")) {
+            if (returnHistoryToDate != null) {
+                criteria.addLessOrEqualThan(DeliverConstants.ITEM_RETURNED_DATE, returnHistoryToDate);
+            }
+        }
+        else {
+            if (returnHistoryToDate != null) {
+                SimpleDateFormat formatter=new SimpleDateFormat("MM/dd/yyyy");
+                String date = formatter.format(returnHistoryToDate);
+                criteria.addLessOrEqualThan(DeliverConstants.ITEM_RETURNED_DATE ,formatDateForOracle(date));
+            }
+        }
+        QueryByCriteria qbc = new QueryByCriteria(OLEReturnHistoryRecord.class, criteria);
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("getReturnHistoryRecords() Query criteria is " + criteria.toString());
+        }
+        List<OLEReturnHistoryRecord>  returnHistoryList = (List<OLEReturnHistoryRecord>) getPersistenceBrokerTemplate().getCollectionByQuery(qbc);
+        LOG.info("getReturnHistoryRecords() ended.");
+        return returnHistoryList;
+    }
+
+    public List<OleDeliverRequestHistoryRecord> getRequestHistoryRecords(java.sql.Date requestHistoryToDate) {
+        LOG.info("getRequuestHistoryRecords() started");
+        Criteria criteria = new Criteria();
+
+        String dbVendor = getProperty("db.vendor");
+        if (dbVendor.equals("mysql")) {
+            if (requestHistoryToDate != null) {
+                criteria.addLessOrEqualThan(DeliverConstants.REQUEST_CREATED_DATE, requestHistoryToDate);
+            }
+        }
+        else {
+            if (requestHistoryToDate != null) {
+                SimpleDateFormat formatter=new SimpleDateFormat("MM/dd/yyyy");
+                String date = formatter.format(requestHistoryToDate);
+                criteria.addLessOrEqualThan(DeliverConstants.REQUEST_CREATED_DATE ,formatDateForOracle(date));
+            }
+        }
+        QueryByCriteria qbc = new QueryByCriteria(OleDeliverRequestHistoryRecord.class, criteria);
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("getRequuestHistoryRecords() Query criteria is " + criteria.toString());
+        }
+        List<OleDeliverRequestHistoryRecord>  returnHistoryList = (List<OleDeliverRequestHistoryRecord>) getPersistenceBrokerTemplate().getCollectionByQuery(qbc);
+        LOG.info("getRequuestHistoryRecords() ended.");
+        return returnHistoryList;
+    }
+
+    private String formatDateForOracle(String historyDate) {
+        String forOracle = DateFormatHelper.getInstance().generateDateStringsForOracle(historyDate);
+        return forOracle;
+    }
+
+    protected String getProperty(String property) {
+        return ConfigContext.getCurrentContextConfig().getProperty(property);
     }
 
 }

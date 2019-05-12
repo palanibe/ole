@@ -185,6 +185,7 @@
                 <ref bean="MessagePopupSectionForBlanketApproveSubscriptionDateValidation"/>
                 <ref bean="hdnBlanketApproveSubscriptionDateValidationFlag"/>
                 <ref bean="MessagePopupSectionForSubscriptionDateValidation"/>
+                <ref bean="MessagePopupSectionForInvoiceAmountValidation"/>
                 <ref bean="hdnSubscriptionDateValidationFlag"/>
                 <bean id ="hiddenButtonForCurrentItems" parent="Uif-SecondaryActionButton" p:methodToCall="refreshCurrentItem" p:hidden="true"  p:refreshId="OLEInvoiceView-processItems-Wrapper"/>
                 <ref bean="updatePriceBtn"/>
@@ -450,6 +451,28 @@
             <bean parent="Uif-HiddenControl"/>
         </property>
     </bean>
+    <bean id="MessagePopupSectionForInvoiceAmountValidation" parent="Uif-VerticalBoxSection">
+        <property name="items">
+            <list>
+                <bean parent="Uif-VerticalFieldGroup">
+                    <property name="items">
+                        <list>
+                            <bean id="invoice_amount_validation_message" parent="Uif-MessageField" p:messageText="@{validationMessage}" />
+                            <ref bean="InvoicePopupButtonForAmountValidation"/>
+                        </list>
+                    </property>
+                </bean>
+            </list>
+        </property>
+    </bean>
+    <bean id="InvoicePopupButtonForAmountValidation" parent="Uif-HorizontalBoxSubSection" p:disclosure.render="true">
+        <property name="items">
+            <list>
+                <bean id="continue_invoice_approve" parent="Uif-SecondaryActionButton-Small" p:methodToCall="continueInvoiceApproval" p:actionLabel="Yes" p:ajaxSubmit="true"  p:successCallback="closeInvoiceAmountExceedsApprovalPopUp();" p:render="@{document.blanketApproveValidationFlag}"/>
+                <bean id="cancel_invoice_approve" parent="Uif-SecondaryActionButton-Small" p:methodToCall="cancelInvoiceApproval" p:actionLabel="No" p:ajaxSubmit="true"  p:successCallback="closeInvoiceAmountExceedsApprovalPopUp()" p:render="@{document.blanketApproveValidationFlag}"/>
+            </list>
+        </property>
+    </bean>
     <bean id="MessagePopupSectionForInvoiceAmountExceedsThreshold" parent="Uif-VerticalBoxSection">
         <property name="items">
             <list>
@@ -505,7 +528,7 @@
                         <list>
                             <bean id="invoice-vendorAlias" parent="Uif-InputField" p:propertyName="vendorAlias"
                                   p:label="Vendor Alias Name"/>
-                            <bean parent="Uif-SecondaryActionButton-Small" p:methodToCall="selectVendor"
+                            <bean parent="Uif-SecondaryActionButton-Small" p:methodToCall="selectVendor" p:ajaxSubmit="true"  p:successCallback="addVendorAlias();" p:onClickScript="clearVendorName();"
                                   p:actionLabel="Select Vendor" p:colSpan="1"/>
                         </list>
                     </property>
@@ -686,7 +709,7 @@
 		      					</map>
 		      				</property>
 		      			</bean>
-		      			<bean id= "ProcessItemsLink" parent="Uif-ActionLink" p:actionLabel="Process Items"
+		      			<bean id= "ProcessItemsLink" parent="Uif-ActionLink" p:actionLabel="Titles"
 			      				p:refreshId="OLEInvoiceView-processItems-Wrapper" p:methodToCall="refresh" p:ajaxSubmit="true" p:successCallback="removeDollarSymbol();">
 		      				<property name="additionalSubmitData">
 		      					<map>
@@ -772,6 +795,7 @@
                                 <property name="bindingInfo.bindingObjectPath" value="document"/>
                             </bean>-->
                             <bean parent="Uif-DataField" p:propertyName="account.amount" p:label="Amount" />
+                            <bean parent="Uif-DataField" p:propertyName="account.foreignAmount" p:label="Foreign Amount" />
                         </list>
                     </property>
                     <property name="subCollections">
@@ -800,6 +824,7 @@
                 <bean parent="Uif-DataField" p:propertyName="itemType.itemTypeDescription" p:label="Item" />
                 <bean parent="Uif-DataField" p:propertyName="itemDescription" p:label="Description"  />
                 <bean parent="Uif-DataField" p:propertyName="estimatedEncumberanceAmount" p:label="Amount" />
+                <bean parent="Uif-DataField" p:propertyName="estimatedEncumberanceForeignAmount" p:label="Foreign Amount" />
             </list>
         </property>
     </bean>
@@ -829,7 +854,7 @@
 
     <bean id="OLEInvoice-ProcessTitle-relatedDocumentDetails"  parent="Uif-Disclosure-TableSubCollection-WithinSection"  p:layoutManager.numberOfColumns="1"
           p:layoutManager.applyDefaultCellWidths="false" p:style="width:auto" p:disclosure.defaultOpen="false" >
-        <property name="collectionObjectClass" value="org.kuali.ole.module.purap.businessobject.AbstractRelatedView" />
+        <!--<property name="collectionObjectClass" value="org.kuali.ole.module.purap.businessobject.AbstractRelatedView" />-->
         <property name="propertyName" value="relatedRequisitionViews" />
         <property name="layoutManager.renderSequenceField" value="false" />
         <property name="layoutManager.richTable.templateOptions" value="false"/>
@@ -1095,7 +1120,7 @@
                 <bean parent="Uif-VerticalFieldGroup">
                     <property name="items">
                         <list>
-                            <bean id="duplicateExist" parent="Uif-MessageField" p:messageText="@{duplicationMessage}" />
+                            <bean id="duplicateExist" parent="Uif-MessageField" p:messageText="@{duplicationApproveMessage}" />
                             <ref bean="OLEInvoice-DuplicationPopUp-HorizontalBoxSection"/>
                         </list>
                     </property>

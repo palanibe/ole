@@ -1,5 +1,6 @@
 package org.kuali.ole.deliver.bo;
 
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.kuali.ole.OLEConstants;
 import org.kuali.ole.OLEPropertyConstants;
@@ -51,6 +52,7 @@ public class OleLoanDocument extends PersistableBusinessObjectBase implements Co
     private String itemLocation;
     private String itemType;
     private String itemTypeName;
+    private String itemTypeDesc;
     private String itemLoanStatus;
     private String errorMessage;
     private String successMessage;
@@ -188,10 +190,20 @@ public class OleLoanDocument extends PersistableBusinessObjectBase implements Co
     private Timestamp damagedItemDate;
     private Timestamp missingPieceItemDate;
     private List<FeeType> feeType;
-    private OleLoanDocumentDaoOjb oleLoanDocumentDaoOjb;
     private List<OleDeliverRequestBo> holdRequestForPatron = new ArrayList<>();
     private String sentNoticesUrl;
     private ItemFineRate itemFineRate = new ItemFineRate();
+    private boolean overrideCheckInTime;
+    private String  itemLostNote;
+    private String  itemReplaceNote;
+    private boolean isManualBill = false;
+    private int noOfClaimsReturnedNoticesSent;
+    private int claimsSearchCount;
+    private Timestamp lastClaimsReturnedSearchedDate;
+    private String feeTypeName;
+    private String fineBillNumber;
+    private Double fineAmount;
+    private Timestamp fineItemDue;
 
     public Date getDummyPastDueDate() {
         return dummyPastDueDate;
@@ -977,6 +989,24 @@ public class OleLoanDocument extends PersistableBusinessObjectBase implements Co
     }
 
     /**
+     * Gets the itemTypeDesc attribute.
+     *
+     * @return Returns the itemTypeDesc
+     */
+    public String getItemTypeDesc() {
+        return itemTypeDesc;
+    }
+
+    /**
+     * Sets the itemTypeDesc attribute value.
+     *
+     * @param itemTypeDesc The itemTypeName to set.
+     */
+    public void setItemTypeDesc(String itemTypeDesc) {
+        this.itemTypeDesc = itemTypeDesc;
+    }
+
+    /**
      * Gets the patronBarcode attribute.
      *
      * @return Returns the patronBarcode
@@ -1064,6 +1094,39 @@ public class OleLoanDocument extends PersistableBusinessObjectBase implements Co
      */
     public void setBorrowerTypeName(String borrowerTypeName) {
         this.borrowerTypeName = borrowerTypeName;
+    }
+
+
+    public String getFeeTypeName() {
+        return feeTypeName;
+    }
+
+    public void setFeeTypeName(String feeTypeName) {
+        this.feeTypeName = feeTypeName;
+    }
+
+    public String getFineBillNumber() {
+        return fineBillNumber;
+    }
+
+    public void setFineBillNumber(String fineBillNumber) {
+        this.fineBillNumber = fineBillNumber;
+    }
+
+    public Double getFineAmount() {
+        return fineAmount;
+    }
+
+    public void setFineAmount(Double fineAmount) {
+        this.fineAmount = fineAmount;
+    }
+
+    public Timestamp getFineItemDue() {
+        return fineItemDue;
+    }
+
+    public void setFineItemDue(Timestamp fineItemDue) {
+        this.fineItemDue = fineItemDue;
     }
 
     /**
@@ -2141,6 +2204,22 @@ public class OleLoanDocument extends PersistableBusinessObjectBase implements Co
         return dueDate;
     }
 
+    public Boolean isItemHasRequest() {
+        Map<String, String> requestHistoryMap = new HashMap<>();
+        if(StringUtils.isNotBlank(this.itemId)) {
+            requestHistoryMap.put(OLEConstants.OleDeliverRequest.ITEM_ID, this.itemId);
+            List<OleDeliverRequestBo> oleDeliverRequestBoList = (List<OleDeliverRequestBo>) KRADServiceLocator.getBusinessObjectService().findMatching(OleDeliverRequestBo.class, requestHistoryMap);
+            if(CollectionUtils.isNotEmpty(oleDeliverRequestBoList)) {
+                return true;
+            }
+            List<OleDeliverRequestHistoryRecord> oleDeliverRequestHistoryRecords = getOleLoanDocumentDaoOjb().getExpiredRequest(this.itemId, this.createDate);
+            if(CollectionUtils.isNotEmpty(oleDeliverRequestHistoryRecords)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public boolean isDamagedItemIndicator() {
         return damagedItemIndicator;
     }
@@ -2181,14 +2260,7 @@ public class OleLoanDocument extends PersistableBusinessObjectBase implements Co
     }
 
     public OleLoanDocumentDaoOjb getOleLoanDocumentDaoOjb() {
-        if(oleLoanDocumentDaoOjb == null){
-            oleLoanDocumentDaoOjb = (OleLoanDocumentDaoOjb) SpringContext.getBean("oleLoanDao");
-        }
-        return oleLoanDocumentDaoOjb;
-    }
-
-    public void setOleLoanDocumentDaoOjb(OleLoanDocumentDaoOjb oleLoanDocumentDaoOjb) {
-        this.oleLoanDocumentDaoOjb = oleLoanDocumentDaoOjb;
+        return (OleLoanDocumentDaoOjb) SpringContext.getBean("oleLoanDao");
     }
 
     @Override
@@ -2212,5 +2284,61 @@ public class OleLoanDocument extends PersistableBusinessObjectBase implements Co
 
     public void setItemFineRate(ItemFineRate itemFineRate) {
         this.itemFineRate = itemFineRate;
+    }
+
+    public boolean isOverrideCheckInTime() {
+        return overrideCheckInTime;
+    }
+
+    public void setOverrideCheckInTime(boolean overrideCheckInTime) {
+        this.overrideCheckInTime = overrideCheckInTime;
+    }
+
+    public String getItemLostNote() {
+        return itemLostNote;
+    }
+
+    public void setItemLostNote(String itemLostNote) {
+        this.itemLostNote = itemLostNote;
+    }
+
+    public String getItemReplaceNote() {
+        return itemReplaceNote;
+    }
+
+    public void setItemReplaceNote(String itemReplaceNote) {
+        this.itemReplaceNote = itemReplaceNote;
+    }
+
+    public boolean isManualBill() {
+        return isManualBill;
+    }
+
+    public void setIsManualBill(boolean isManualBill) {
+        this.isManualBill = isManualBill;
+    }
+
+    public int getNoOfClaimsReturnedNoticesSent() {
+        return noOfClaimsReturnedNoticesSent;
+    }
+
+    public void setNoOfClaimsReturnedNoticesSent(int noOfClaimsReturnedNoticesSent) {
+        this.noOfClaimsReturnedNoticesSent = noOfClaimsReturnedNoticesSent;
+    }
+
+    public int getClaimsSearchCount() {
+        return claimsSearchCount;
+    }
+
+    public void setClaimsSearchCount(int claimsSearchCount) {
+        this.claimsSearchCount = claimsSearchCount;
+    }
+
+    public Timestamp getLastClaimsReturnedSearchedDate() {
+        return lastClaimsReturnedSearchedDate;
+    }
+
+    public void setLastClaimsReturnedSearchedDate(Timestamp lastClaimsReturnedSearchedDate) {
+        this.lastClaimsReturnedSearchedDate = lastClaimsReturnedSearchedDate;
     }
 }

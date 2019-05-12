@@ -252,9 +252,9 @@ public class OlePurchaseOrderServiceImpl extends PurchaseOrderServiceImpl implem
             }
             po.setApplicationDocumentStatus(PurchaseOrderStatuses.APPDOC_OPEN);
             // no need to save here because calling class should handle the save if needed
-        } else {
+        } /*else {
             LOG.error("attemptSetupOfInitialOpenOfDocument() Found document already in '" + PurchaseOrderStatuses.APPDOC_OPEN + "' status for PO#" + po.getPurapDocumentIdentifier() + "; will not change or update");
-        }
+        }*/
     }
 
     //setting print button for PO amendment document
@@ -510,11 +510,12 @@ public class OlePurchaseOrderServiceImpl extends PurchaseOrderServiceImpl implem
                                 if (poCurrencyType != null && (poCurrencyType.equalsIgnoreCase(poaCurrencyType)) && !items.isLatestExchangeRate() && !purchaseDoc.getIsPODoc() && ((purchaseDoc instanceof PurchaseOrderAmendmentDocument) )) {
                                     items.setItemExchangeRate(tempCurrentExchangeRate.getItemExchangeRate());
                                 } else {
-                                    items.setItemExchangeRate(new KualiDecimal(tempOleExchangeRate.getExchangeRate()));
+
+                                    items.setItemExchangeRate(tempOleExchangeRate.getExchangeRate());
                                 }
                             }
                             if (items.getItemExchangeRate() != null && items.getItemForeignUnitCost() != null) {
-                                items.setItemUnitCostUSD(new KualiDecimal(items.getItemForeignUnitCost().bigDecimalValue().divide(items.getItemExchangeRate().bigDecimalValue(), 4, RoundingMode.HALF_UP)));
+                                items.setItemUnitCostUSD(new KualiDecimal(items.getItemForeignUnitCost().bigDecimalValue().divide(items.getItemExchangeRate(), 4, RoundingMode.HALF_UP)));
                                 items.setItemUnitPrice(items.getItemUnitCostUSD().bigDecimalValue().setScale(2, BigDecimal.ROUND_HALF_UP));
                                 items.setItemListPrice(items.getItemUnitCostUSD());
                             }

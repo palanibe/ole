@@ -59,8 +59,17 @@ public class DocstoreUtil {
                 org.kuali.ole.docstore.common.document.Item item = new ItemOleml();
                 org.kuali.ole.docstore.common.search.SearchParams search_Params = new org.kuali.ole.docstore.common.search.SearchParams();
                 SearchResponse searchResponse = null;
-                search_Params.getSearchConditions().add(search_Params.buildSearchCondition("phrase", search_Params.buildSearchField(org.kuali.ole.docstore.common.document.content.enums.DocType.ITEM.getCode(), item.ITEM_BARCODE, oleDeliverRequestBo.getItemId()), ""));
+                if(StringUtils.isNotBlank(oleDeliverRequestBo.getItemId())){
+                    search_Params.getSearchConditions().add(search_Params.buildSearchCondition("phrase", search_Params.buildSearchField(org.kuali.ole.docstore.common.document.content.enums.DocType.ITEM.getCode(), item.ITEM_BARCODE, oleDeliverRequestBo.getItemId()), ""));
+                }else{
+                    if(oleDeliverRequestBo.getItemUuid().contains("wio")){
+                        search_Params.getSearchConditions().add(search_Params.buildSearchCondition("phrase", search_Params.buildSearchField(org.kuali.ole.docstore.common.document.content.enums.DocType.ITEM.getCode(), item.ID, oleDeliverRequestBo.getItemUuid()), ""));
+                    }else{
+                        search_Params.getSearchConditions().add(search_Params.buildSearchCondition("phrase", search_Params.buildSearchField(org.kuali.ole.docstore.common.document.content.enums.DocType.ITEM.getCode(), item.ID, "wio-"+oleDeliverRequestBo.getItemUuid()), ""));
+                    }
+                }
                 search_Params.getSearchResultFields().add(search_Params.buildSearchResultField(org.kuali.ole.docstore.common.document.content.enums.DocType.ITEM.getCode(), "id"));
+                search_Params.getSearchResultFields().add(search_Params.buildSearchResultField(org.kuali.ole.docstore.common.document.content.enums.DocType.ITEM.getCode(), "ItemBarcode_display"));
                 search_Params.getSearchResultFields().add(search_Params.buildSearchResultField(org.kuali.ole.docstore.common.document.content.enums.DocType.ITEM.getCode(), "holdingsIdentifier"));
                 search_Params.getSearchResultFields().add(search_Params.buildSearchResultField(org.kuali.ole.docstore.common.document.content.enums.DocType.ITEM.getCode(), "Title_display"));
                 search_Params.getSearchResultFields().add(search_Params.buildSearchResultField(org.kuali.ole.docstore.common.document.content.enums.DocType.ITEM.getCode(), "Author_display"));
@@ -77,6 +86,8 @@ public class DocstoreUtil {
                             bibAuthor = searchResultField.getFieldValue();
                         } else  if (searchResultField.getFieldName().equalsIgnoreCase("id") &&!fieldValue.isEmpty()){
                             oleDeliverRequestBo.setItemUuid(fieldValue);
+                        } else if (searchResultField.getFieldName().equalsIgnoreCase("ItemBarcode_display") &&!fieldValue.isEmpty()) {
+                            oleDeliverRequestBo.setItemId(fieldValue);
                         }
                     }
                 }

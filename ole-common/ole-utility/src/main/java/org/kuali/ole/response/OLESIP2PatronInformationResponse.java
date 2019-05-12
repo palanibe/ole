@@ -126,13 +126,13 @@ public class OLESIP2PatronInformationResponse extends OLESIP2Response {
             builder.append("|AT"+overDueItemBarcode);
         }*/
         //Charged Items
-        if(oleLookupUser.getOleCheckedOutItems() != null && oleLookupUser.getOleCheckedOutItems().getCheckedOutItems() != null){
+        /*if(oleLookupUser.getOleCheckedOutItems() != null && oleLookupUser.getOleCheckedOutItems().getCheckedOutItems() != null){
             for(OLECheckedOutItem oleCheckedOutItem : oleLookupUser.getOleCheckedOutItems().getCheckedOutItems()){
                 builder.append(OLESIP2Constants.SPLIT+
                         OLESIP2Constants.CHARGED_ITEMS_CODE+
                         oleCheckedOutItem.getItemId());
             }
-        }
+        }*/
 
         if (oleLookupUser.getPatronAddress() != null) {
             builder.append(OLESIP2Constants.SPLIT+
@@ -150,17 +150,19 @@ public class OLESIP2PatronInformationResponse extends OLESIP2Response {
         }
         builder.append(OLESIP2Constants.SPLIT+
                 OLESIP2Constants.EMAIL_ADDRESS_CODE);
-        builder.append(oleLookupUser.getPatronEmail() != null ? oleLookupUser.getPatronEmail().getEmailTypeCode()
-                + " " + oleLookupUser.getPatronEmail().getEmailAddress() : "");
+        builder.append(oleLookupUser.getPatronEmail() != null ? oleLookupUser.getPatronEmail().getEmailAddress() : "");
         builder.append(OLESIP2Constants.SPLIT+
                 OLESIP2Constants.HOME_PHONE_NUM_CODE);
-        builder.append(oleLookupUser.getPatronPhone() != null ? oleLookupUser.getPatronPhone().getPhoneTypeCode()
-                + " " + oleLookupUser.getPatronPhone().getPhoneNumber() : "");
+        builder.append(oleLookupUser.getPatronPhone() != null ? oleLookupUser.getPatronPhone().getPhoneNumber() : "");
 
         if (StringUtils.isNotBlank(oleLookupUser.getMessage())) {
             builder.append(OLESIP2Constants.SPLIT+
                  OLESIP2Constants.SCREEN_MSG_CODE);
-            builder.append(oleLookupUser.getMessage());
+            if(oleLookupUser.isValidPatron()==true){
+                builder.append(OLESIP2Constants.SCREEN_SUCCESS_MSG);
+            }else{
+                builder.append(OLESIP2Constants.SCREEN_FAILURE_MSG);
+            }
         }
 
         if (StringUtils.isNotBlank(sip2PatronInformationRequestParser.getSequenceNum())) {

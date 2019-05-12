@@ -55,6 +55,9 @@ public class PurapConstants {
 
     public static final String ORDER_TYPE_STANDING = "Standing";
 
+    public static final String ORDER_TYPE_BLANKET = "Blanket";
+    public static final String ORDER_TYPE_INTEGRATING_RESOURCE = "Integrating resource";
+    public static final String ORDER_TYPE_CONTINUING = "Continuing";
     public static final String ORDER_TYPE_MEMBERSHIP = "Membership";
 
     public static class QuoteTypes {
@@ -1376,8 +1379,8 @@ public class PurapConstants {
         returnMap.put("relatedCreditMemoViews", PurchasingAccountsPayableDocumentBase.class);
         returnMap.put("paymentHistoryPaymentRequestViews", PurchasingAccountsPayableDocumentBase.class);
         returnMap.put("paymentHistoryCreditMemoViews", PurchasingAccountsPayableDocumentBase.class);
-        returnMap.put("paymentHistoryInvoiceViews", PurchasingAccountsPayableDocumentBase.class);
-        returnMap.put("paymentHistoryInvoiceViews", null);
+        //returnMap.put("paymentHistoryInvoiceViews", PurchasingAccountsPayableDocumentBase.class);
+        //returnMap.put("paymentHistoryInvoiceViews", null);
         returnMap.put("invoiceDocuments", OlePurchaseOrderItem.class);
         return returnMap;
     }

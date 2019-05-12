@@ -5,6 +5,7 @@ import org.kuali.ole.deliver.notice.bo.OleNoticeContentConfigurationBo;
 import org.kuali.ole.deliver.notice.bo.OleNoticeFieldLabelMapping;
 import org.kuali.rice.krad.maintenance.MaintenanceDocument;
 import org.kuali.rice.krad.util.GlobalVariables;
+import org.kuali.rice.krad.util.KRADConstants;
 import org.kuali.rice.krad.web.controller.MaintenanceDocumentController;
 import org.kuali.rice.krad.web.form.DocumentFormBase;
 import org.kuali.rice.krad.web.form.MaintenanceDocumentForm;
@@ -17,6 +18,8 @@ import org.springframework.web.servlet.ModelAndView;
 import org.apache.commons.collections.CollectionUtils;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Created by maheswarang on 10/6/15.
@@ -33,6 +36,11 @@ public class OleNoticeContentConfigurationMaintenanceController extends Maintena
         MaintenanceDocumentForm maintenanceForm = (MaintenanceDocumentForm) form;
         MaintenanceDocument document = (MaintenanceDocument) maintenanceForm.getDocument();
         OleNoticeContentConfigurationBo oleNoticeContentConfigurationBo = (OleNoticeContentConfigurationBo) document.getNewMaintainableObject().getDataObject();
+        if(CollectionUtils.isNotEmpty(oleNoticeContentConfigurationBo.getOleNoticeFieldLabelMappings()) && oleNoticeContentConfigurationBo.getOleNoticeFieldLabelMappings().size() > 0){
+            Map<String,String> oleNoticeConfigBoMap = new HashMap<>();
+            oleNoticeConfigBoMap.put("oleNoticeContentConfigurationId",oleNoticeContentConfigurationBo.getOleNoticeContentConfigurationId());
+            getBusinessObjectService().deleteMatching(OleNoticeFieldLabelMapping.class,oleNoticeConfigBoMap);
+        }
         oleNoticeContentConfigurationBo.getOleNoticeFieldLabelMappings().clear();
         if(CollectionUtils.isNotEmpty(oleNoticeContentConfigurationBo.getOleNoticePatronFieldLabelMappings())){
             for(OleNoticeFieldLabelMapping oleNoticeFieldLabelMapping :oleNoticeContentConfigurationBo.getOleNoticePatronFieldLabelMappings() ){
@@ -63,6 +71,18 @@ public class OleNoticeContentConfigurationMaintenanceController extends Maintena
         return super.refresh(form,result,request,response);
     }
 
+    @Override
+    @RequestMapping(params = "methodToCall=maintenanceEdit")
+    public ModelAndView maintenanceEdit(@ModelAttribute("KualiForm") MaintenanceDocumentForm form, BindingResult result,
+                                        HttpServletRequest request, HttpServletResponse response) throws Exception {
 
+        MaintenanceDocumentForm maintenanceForm = form;
+        setupMaintenance(form, request, KRADConstants.MAINTENANCE_EDIT_ACTION);
+        MaintenanceDocument document =  maintenanceForm.getDocument();
+        OleNoticeContentConfigurationBo oleNoticeContentConfigurationBo = (OleNoticeContentConfigurationBo) document.getNewMaintainableObject().getDataObject();
+        String noticeType = oleNoticeContentConfigurationBo.getNoticeType();
+        GlobalVariables.getUserSession().addObject("noticeType",noticeType);
+        return getUIFModelAndView(form);
+    }
 
 }

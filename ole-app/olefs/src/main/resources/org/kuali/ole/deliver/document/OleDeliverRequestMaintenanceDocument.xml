@@ -116,9 +116,9 @@
                         <bean parent="Uif-SecondaryActionButton" p:ajaxSubmit="false" p:methodToCall="reload"
                               p:actionLabel="reload"
                               p:render="false"/>
-                        <bean parent="Uif-SecondaryActionButton" p:ajaxSubmit="false" p:methodToCall="blanketApprove"
+                       <!-- <bean parent="Uif-SecondaryActionButton" p:ajaxSubmit="false" p:methodToCall="blanketApprove"
                               p:actionLabel="Blanket Approve" p:performClientSideValidation="true"
-                              p:render="@{#actionFlags[#Constants.KUALI_ACTION_CAN_BLANKET_APPROVE]}"/>
+                              p:render="@{#actionFlags[#Constants.KUALI_ACTION_CAN_BLANKET_APPROVE]}"/>-->
                         <bean parent="Uif-SecondaryActionButton" p:ajaxSubmit="false" p:methodToCall="approve"
                               p:actionLabel="Approve" p:performClientSideValidation="true"
                               p:render="@{#actionFlags[#Constants.KUALI_ACTION_CAN_APPROVE]}"/>
@@ -131,8 +131,8 @@
                         <bean parent="Uif-SecondaryActionButton" p:ajaxSubmit="false" p:methodToCall="acknowledge"
                               p:actionLabel="Acknowledge"
                               p:render="@{#actionFlags[#Constants.KUALI_ACTION_CAN_ACKNOWLEDGE]}"/>
-                        <bean parent="Uif-BackAction"  p:actionLabel="Close" p:ajaxSubmit="false"
-                              p:render="@{#actionFlags[#Constants.KUALI_ACTION_CAN_CLOSE] and maintenanceAction ne 'Cancel'}"/>
+                        <!--<bean parent="Uif-BackAction"  p:actionLabel="Close" p:ajaxSubmit="false"
+                              p:render="@{#actionFlags[#Constants.KUALI_ACTION_CAN_CLOSE] and maintenanceAction ne 'Cancel'}"/>-->
                         <bean parent="OleRequest-Uif-CancelAction" p:ajaxSubmit="false"
                               p:render="@{#actionFlags[#Constants.KUALI_ACTION_CAN_CANCEL] and maintenanceAction ne 'Cancel'} "/>
                         <bean parent="Uif-ActionLink" p:ajaxSubmit="false" p:methodToCall="copy" p:actionLabel="Copy"
@@ -496,7 +496,7 @@
                 <bean id="recallRequest-itemTitle" parent="Uif-InputField" p:propertyName="title"
                       p:readOnly="@{document.newMaintainableObject.dataObject.itemId ne null and (document.newMaintainableObject.dataObject.itemId ne null and document.newMaintainableObject.dataObject.itemId ne '')}"
                       p:render="@{document.newMaintainableObject.dataObject.requestTypeId eq '1' or document.oldMaintainableObject.dataObject.requestTypeId eq '1' or document.newMaintainableObject.dataObject.requestTypeId eq '2' or document.oldMaintainableObject.dataObject.requestTypeId eq '2' or document.newMaintainableObject.dataObject.requestTypeId eq '3' or document.oldMaintainableObject.dataObject.requestTypeId eq '3' or document.newMaintainableObject.dataObject.requestTypeId eq '4' or document.oldMaintainableObject.dataObject.requestTypeId eq '4' or document.newMaintainableObject.dataObject.requestTypeId eq '5' or document.oldMaintainableObject.dataObject.requestTypeId eq '5' or document.newMaintainableObject.dataObject.requestTypeId eq '6' or document.oldMaintainableObject.dataObject.requestTypeId eq '6' or document.newMaintainableObject.dataObject.requestTypeId eq '7' or document.oldMaintainableObject.dataObject.requestTypeId eq '7' or document.newMaintainableObject.dataObject.requestTypeId eq '8' or document.oldMaintainableObject.dataObject.requestTypeId eq '8' or document.newMaintainableObject.dataObject.requestTypeId eq '9' or document.oldMaintainableObject.dataObject.requestTypeId eq '9'}"/>
-                <bean id="recallRequest-itemUuid" parent="Uif-InputField" p:propertyName="itemUuid" p:required="true"
+                <bean id="recallRequest-itemUuid" parent="Uif-InputField" p:propertyName="itemUuid"
                       p:readOnly="@{document.newMaintainableObject.dataObject.itemUuid ne null and (document.newMaintainableObject.dataObject.itemUuid ne null and document.newMaintainableObject.dataObject.itemUuid ne '')}"
                       p:render="@{document.newMaintainableObject.dataObject.requestTypeId eq '1' or document.oldMaintainableObject.dataObject.requestTypeId eq '1' or document.newMaintainableObject.dataObject.requestTypeId eq '2' or document.oldMaintainableObject.dataObject.requestTypeId eq '2' or document.newMaintainableObject.dataObject.requestTypeId eq '3' or document.oldMaintainableObject.dataObject.requestTypeId eq '3' or document.newMaintainableObject.dataObject.requestTypeId eq '4' or document.oldMaintainableObject.dataObject.requestTypeId eq '4' or document.newMaintainableObject.dataObject.requestTypeId eq '5' or document.oldMaintainableObject.dataObject.requestTypeId eq '5' or document.newMaintainableObject.dataObject.requestTypeId eq '6' or document.oldMaintainableObject.dataObject.requestTypeId eq '6' or document.newMaintainableObject.dataObject.requestTypeId eq '7' or document.oldMaintainableObject.dataObject.requestTypeId eq '7' or document.newMaintainableObject.dataObject.requestTypeId eq '8' or document.oldMaintainableObject.dataObject.requestTypeId eq '8' or document.newMaintainableObject.dataObject.requestTypeId eq '9' or document.oldMaintainableObject.dataObject.requestTypeId eq '9'}"/>
 

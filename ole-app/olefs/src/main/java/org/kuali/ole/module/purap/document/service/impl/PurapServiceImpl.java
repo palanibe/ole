@@ -678,7 +678,7 @@ public class PurapServiceImpl implements PurapService {
         if (!StringUtils.equalsIgnoreCase(purchaseOrderDocument.getDocumentHeader().getWorkflowDocument().getDocumentTypeName(), docType)) {
             // we are skipping the validation above because it would be too late to correct any errors (i.e. because in
             // post-processing)
-            purchaseOrderService.createAndRoutePotentialChangeDocument(purchaseOrderDocument.getDocumentNumber(), docType, assemblePurchaseOrderNote(apDocument, docType, action), new ArrayList(), newStatus);
+            purchaseOrderService.createAndRoutePotentialChangeDocument(purchaseOrderDocument, docType, assemblePurchaseOrderNote(apDocument, docType, action), new ArrayList(), newStatus);
         }
 
         /*
@@ -898,12 +898,29 @@ public class PurapServiceImpl implements PurapService {
 
         boolean salesTaxInd = SpringContext.getBean(ParameterService.class).getParameterValueAsBoolean(OleParameterConstants.PURCHASING_DOCUMENT.class, PurapParameterConstants.ENABLE_SALES_TAX_IND);
         boolean useTaxIndicator = purapDocument.isUseTaxIndicator();
-        String deliveryState = getDeliveryState(purapDocument);
-        String deliveryPostalCode = getDeliveryPostalCode(purapDocument);
-        Date transactionTaxDate = purapDocument.getTransactionTaxDate();
 
         //calculate if sales tax enabled for purap
         if (salesTaxInd || useTaxIndicator) {
+            String deliveryState = getDeliveryState(purapDocument);
+            String deliveryPostalCode = getDeliveryPostalCode(purapDocument);
+            Date transactionTaxDate = purapDocument.getTransactionTaxDate();
+            //iterate over items and calculate tax if taxable
+            for (PurApItem item : purapDocument.getItems()) {
+                if (isTaxable(useTaxIndicator, deliveryState, item)) {
+                    calculateItemTax(useTaxIndicator, deliveryPostalCode, transactionTaxDate, item, item.getUseTaxClass(), purapDocument);
+                }
+            }
+        }
+    }
+
+    @Override
+    public void calculateTaxForPREQ(PurchasingAccountsPayableDocument purapDocument, String deliveryState, String deliveryPostalCode) {
+        boolean salesTaxInd = SpringContext.getBean(ParameterService.class).getParameterValueAsBoolean(OleParameterConstants.PURCHASING_DOCUMENT.class, PurapParameterConstants.ENABLE_SALES_TAX_IND);
+        boolean useTaxIndicator = purapDocument.isUseTaxIndicator();
+
+        //calculate if sales tax enabled for purap
+        if (salesTaxInd || useTaxIndicator) {
+            Date transactionTaxDate = purapDocument.getTransactionTaxDate();
             //iterate over items and calculate tax if taxable
             for (PurApItem item : purapDocument.getItems()) {
                 if (isTaxable(useTaxIndicator, deliveryState, item)) {

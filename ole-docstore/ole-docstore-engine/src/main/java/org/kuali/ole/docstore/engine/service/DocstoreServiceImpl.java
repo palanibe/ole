@@ -13,6 +13,7 @@ import org.kuali.ole.docstore.common.search.*;
 import org.kuali.ole.docstore.common.service.DocstoreService;
 import org.kuali.ole.docstore.engine.service.index.DocstoreIndexService;
 import org.kuali.ole.docstore.engine.service.index.DocstoreIndexServiceImpl;
+import org.kuali.ole.docstore.engine.service.index.solr.BibMarcIndexer;
 import org.kuali.ole.docstore.engine.service.search.DocstoreSearchService;
 import org.kuali.ole.docstore.engine.service.search.DocstoreSolrSearchService;
 import org.kuali.ole.docstore.engine.service.storage.DocstoreRDBMSStorageService;
@@ -27,10 +28,12 @@ import org.kuali.rice.coreservice.impl.parameter.ParameterServiceImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Date;
 
 /**
  * Created with IntelliJ IDEA.
@@ -300,7 +303,9 @@ public class DocstoreServiceImpl implements DocstoreService {
             holdingsId = DocumentUniqueIDPrefix.getPrefixedId(DocumentUniqueIDPrefix.PREFIX_WORK_HOLDINGS_OLEML, holdingsId);
         }
         try {
+            Holdings holding = retrieveHoldings(holdingsId);
             getDocstoreStorageService().deleteHoldings(holdingsId);
+            getDocstoreStorageService().saveDeletedHolding(holding);
         } catch (Exception e) {
             LOG.error("Exception occurred while deleting Holdings ", e);
             throw e;
@@ -320,7 +325,9 @@ public class DocstoreServiceImpl implements DocstoreService {
             itemId = DocumentUniqueIDPrefix.getPrefixedId(DocumentUniqueIDPrefix.PREFIX_WORK_ITEM_OLEML, itemId);
         }
         try {
+            Item item = retrieveItem(itemId);
             getDocstoreStorageService().deleteItem(itemId);
+            getDocstoreStorageService().saveDeletedItem(item);
         } catch (Exception e) {
             LOG.error("Exception occurred while deleting item ", e);
             throw e;
@@ -602,10 +609,16 @@ public class DocstoreServiceImpl implements DocstoreService {
 
     @Override
     public void deleteBibs(List<String> bibIds) {
+        List<Bib> bibs = new ArrayList<>();
+        for(String bibId:bibIds){
+            Bib bib = retrieveBib(bibId);
+            bibs.add(bib);
+        }
+        getDocstoreStorageService().deleteBibs(bibIds);
         try {
-            getDocstoreStorageService().deleteBibs(bibIds);
+            getDocstoreStorageService().saveDeletedBibs(bibs);
         } catch (Exception e) {
-            LOG.error("Exception occurred while deleting bib records ", e);
+            LOG.error("Exception occurred while saving deleted bib records ", e);
         }
         try {
             getDocstoreIndexService().deleteBibs(bibIds);
@@ -805,6 +818,7 @@ public class DocstoreServiceImpl implements DocstoreService {
     public void bulkUpdateHoldings(Holdings holdings, List<String> holdingIds, String canUpdateStaffOnlyFlag) {
         HoldingOlemlRecordProcessor holdingOlemlRecordProcessor = new HoldingOlemlRecordProcessor();
         OleHoldings oleHoldings = holdingOlemlRecordProcessor.fromXML(holdings.getContent());
+        List<String> bibIds = new ArrayList<>();
         try {
             for (String holdingId : holdingIds) {
                 Holdings existingHoldings = (Holdings) getDocstoreStorageService().retrieveHoldings(holdingId);
@@ -826,18 +840,22 @@ public class DocstoreServiceImpl implements DocstoreService {
                     }
                     if (oleHoldings.getCallNumber() != null) {
                         if (existingOleHoldings.getCallNumber() != null) {
-                            if (oleHoldings.getCallNumber().getPrefix() != null) {
+                            if (StringUtils.isNotBlank(oleHoldings.getCallNumber().getPrefix())) {
                                 existingOleHoldings.getCallNumber().setPrefix(oleHoldings.getCallNumber().getPrefix());
                             }
-                            if (oleHoldings.getCallNumber().getNumber() != null) {
+                            if (StringUtils.isNotBlank(oleHoldings.getCallNumber().getNumber())) {
                                 existingOleHoldings.getCallNumber().setNumber(oleHoldings.getCallNumber().getNumber());
                             }
                             if (oleHoldings.getCallNumber().getShelvingScheme() != null &&
-                                    oleHoldings.getCallNumber().getShelvingScheme().getCodeValue() != null) {
-                                existingOleHoldings.getCallNumber().getShelvingScheme().setCodeValue(oleHoldings.getCallNumber().getShelvingScheme().getCodeValue());
+                                    StringUtils.isNotBlank(oleHoldings.getCallNumber().getShelvingScheme().getCodeValue())) {
+                                if(existingOleHoldings.getCallNumber().getShelvingScheme()!=null) {
+                                    existingOleHoldings.getCallNumber().getShelvingScheme().setCodeValue(oleHoldings.getCallNumber().getShelvingScheme().getCodeValue());
+                                } else{
+                                    existingOleHoldings.getCallNumber().setShelvingScheme(oleHoldings.getCallNumber().getShelvingScheme());
+                                }
                             }
                             if (oleHoldings.getCallNumber().getShelvingOrder() != null &&
-                                    oleHoldings.getCallNumber().getShelvingOrder().getFullValue() != null) {
+                                    StringUtils.isNotBlank(oleHoldings.getCallNumber().getShelvingOrder().getFullValue())) {
                                 existingOleHoldings.getCallNumber().getShelvingOrder().setFullValue(oleHoldings.getCallNumber().getShelvingOrder().getFullValue());
                             }
                         } else {
@@ -881,13 +899,24 @@ public class DocstoreServiceImpl implements DocstoreService {
                     existingHoldings.setType(holdings.getType());
                     existingHoldings.setFormat(holdings.getFormat());
                     existingHoldings.setContent(holdingOlemlRecordProcessor.toXML(existingOleHoldings));
-                    updateHoldings(existingHoldings);
+                    try {
+                        updateHoldings(existingHoldings);
+                    } catch (Exception e){
+                        bibIds.add(existingOleHoldings.getBibIdentifier());
+                    }
                 } else {
                     DocstoreException docstoreException = new DocstoreValidationException(DocstoreResources.HOLDING_ID_NOT_FOUND, DocstoreResources.HOLDING_ID_NOT_FOUND);
                     docstoreException.addErrorParams("holdingsId", holdingId);
                     throw docstoreException;
                 }
 
+            }
+            if(bibIds.size()>0){
+                BibMarcIndexer bibMarcIndexer = new BibMarcIndexer();
+                DocstoreRDBMSStorageService rdbmsStorageService = new DocstoreRDBMSStorageService();
+                for(String bibId : bibIds) {
+                    bibMarcIndexer.createTree(rdbmsStorageService.retrieveBibTree(bibId));
+                }
             }
         } catch (Exception e) {
             LOG.error("Exception occurred while doing bulk update of Holdings  ", e);
@@ -899,6 +928,7 @@ public class DocstoreServiceImpl implements DocstoreService {
     public void bulkUpdateItem(Item item, List<String> itemIds, String canUpdateStaffOnlyFlag) {
         ItemOlemlRecordProcessor itemOlemlRecordProcessor = new ItemOlemlRecordProcessor();
         org.kuali.ole.docstore.common.document.content.instance.Item itemContent = itemOlemlRecordProcessor.fromXML(item.getContent());
+        List<String> bibIds = new ArrayList<>();
         try {
             for (String itemId : itemIds) {
                 Item existingItem = (Item) getDocstoreStorageService().retrieveItem(itemId);
@@ -909,7 +939,7 @@ public class DocstoreServiceImpl implements DocstoreService {
                             itemContent.getLocation().getLocationLevel().getName() != null &&
                             !itemContent.getLocation().getLocationLevel().getName().isEmpty()) {
                         if (existingItemContent.getLocation() != null && existingItemContent.getLocation().getLocationLevel() != null) {
-                            existingItemContent.getLocation().getLocationLevel().setName(itemContent.getLocation().getLocationLevel().getName());
+                            existingItemContent.setLocation(itemContent.getLocation());
                         } else {
                             existingItemContent.setLocation(itemContent.getLocation());
                         }
@@ -1101,7 +1131,9 @@ public class DocstoreServiceImpl implements DocstoreService {
 
                         }
                     }
-
+                    if(StringUtils.isNotBlank(item.getUpdatedBy())){
+                        existingItem.setUpdatedBy(item.getUpdatedBy());
+                    }
                     if (itemContent.getHighDensityStorage() != null &&
                             itemContent.getHighDensityStorage().getRow() != null) {
                         existingItemContent.setHighDensityStorage(itemContent.getHighDensityStorage());
@@ -1109,6 +1141,7 @@ public class DocstoreServiceImpl implements DocstoreService {
                     if (itemContent.getItemStatus() != null) {
                         if (StringUtils.isNotBlank(itemContent.getItemStatus().getCodeValue()) || StringUtils.isNotBlank(itemContent.getItemStatus().getFullValue())) {
                             existingItemContent.setItemStatus(itemContent.getItemStatus());
+                            existingItemContent.setItemStatusEffectiveDate(new SimpleDateFormat("MM/dd/yyyy HH:mm:ss").format(new Date()));
                         }
                     }
                     if (canUpdateStaffOnlyFlag.equalsIgnoreCase("true")) {
@@ -1118,12 +1151,23 @@ public class DocstoreServiceImpl implements DocstoreService {
                     existingItem.setType(item.getType());
                     existingItem.setFormat(item.getFormat());
                     existingItem.setContent(itemOlemlRecordProcessor.toXML(existingItemContent));
-                    updateItem(existingItem);
+                    try {
+                        updateItem(existingItem);
+                    } catch(Exception ex){
+                        bibIds.add(DocumentUniqueIDPrefix.getDocumentId(existingItem.getHolding().getBib().getId()));
+                    }
 
                 } else {
                     DocstoreException docstoreException = new DocstoreValidationException(DocstoreResources.ITEM_ID_NOT_FOUND, DocstoreResources.ITEM_ID_NOT_FOUND);
                     docstoreException.addErrorParams("itemId", itemId);
                     throw docstoreException;
+                }
+            }
+            if(bibIds.size()>0){
+                BibMarcIndexer bibMarcIndexer = new BibMarcIndexer();
+                DocstoreRDBMSStorageService rdbmsStorageService = new DocstoreRDBMSStorageService();
+                for(String bibId : bibIds) {
+                    bibMarcIndexer.createTree(rdbmsStorageService.retrieveBibTree(bibId));
                 }
             }
         } catch (Exception e) {
@@ -1139,7 +1183,7 @@ public class DocstoreServiceImpl implements DocstoreService {
     }
 
     private void setPHoldingInformation(OleHoldings oleHoldings, OleHoldings existingOleHoldings) {
-        if (oleHoldings.getCopyNumber() != null) {
+        if ((oleHoldings.getCopyNumber()!=null) && (StringUtils.isNotBlank(oleHoldings.getCopyNumber()))) {
             existingOleHoldings.setCopyNumber(oleHoldings.getCopyNumber());
         }
         if (oleHoldings.getExtentOfOwnership() != null && oleHoldings.getExtentOfOwnership().size() > 0) {
@@ -1271,23 +1315,29 @@ public class DocstoreServiceImpl implements DocstoreService {
             }
 
         }
-        if (oleHoldings.getLink() != null) {
-            existingOleHoldings.setLink(oleHoldings.getLink());
-        }
+
         if (oleHoldings.getHoldingsAccessInformation() != null &&
                 ((oleHoldings.getHoldingsAccessInformation().getNumberOfSimultaneousUser() != null && !oleHoldings.getHoldingsAccessInformation().getNumberOfSimultaneousUser().isEmpty()) ||
                         (oleHoldings.getHoldingsAccessInformation().getAccessUsername() != null && !oleHoldings.getHoldingsAccessInformation().getAccessUsername().isEmpty()) ||
                         (oleHoldings.getHoldingsAccessInformation().getAccessPassword() != null && !oleHoldings.getHoldingsAccessInformation().getAccessPassword().isEmpty()) ||
                         (oleHoldings.getHoldingsAccessInformation().getAuthenticationType() != null && !oleHoldings.getHoldingsAccessInformation().getAuthenticationType().isEmpty()) ||
                         (oleHoldings.getHoldingsAccessInformation().getProxiedResource() != null && !oleHoldings.getHoldingsAccessInformation().getProxiedResource().isEmpty()) ||
+                        (oleHoldings.getHoldingsAccessInformation().getMaterialsSpecified() != null && !oleHoldings.getHoldingsAccessInformation().getMaterialsSpecified().isEmpty()) ||
+                        (oleHoldings.getHoldingsAccessInformation().getFirstIndicator() != null && !oleHoldings.getHoldingsAccessInformation().getFirstIndicator().isEmpty()) ||
+                        (oleHoldings.getHoldingsAccessInformation().getSecondIndicator() != null && !oleHoldings.getHoldingsAccessInformation().getSecondIndicator().isEmpty()) ||
                         (oleHoldings.getHoldingsAccessInformation().getAccessLocation() != null && !oleHoldings.getHoldingsAccessInformation().getAccessLocation().isEmpty()))) {
             existingOleHoldings.setHoldingsAccessInformation(oleHoldings.getHoldingsAccessInformation());
         }
         if (oleHoldings.getLocalPersistentLink() != null && !oleHoldings.getLocalPersistentLink().isEmpty()) {
             existingOleHoldings.setLocalPersistentLink(oleHoldings.getLocalPersistentLink());
         }
-        if (oleHoldings.getLink() != null) {
-            existingOleHoldings.setLink(oleHoldings.getLink());
+        if (oleHoldings.getLink() != null && oleHoldings.getLink().size() > 0) {
+            List<Link> linkList = existingOleHoldings.getLink();
+            for (Link link : oleHoldings.getLink()) {
+                linkList.add(link);
+            }
+            if (linkList != null && linkList.size() > 0)
+                existingOleHoldings.setLink(linkList);
         }
         if (oleHoldings.isInterLibraryLoanAllowed()) {
             existingOleHoldings.setInterLibraryLoanAllowed(oleHoldings.isInterLibraryLoanAllowed());

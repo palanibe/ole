@@ -1,5 +1,4 @@
 <#import "itemInfo.ftl" as itemInfo >
-<#import "replacement-bill.ftl" as bill>
 
 <HTML>
 <#if oleNoticeBo.noticeTitle ??  >
@@ -13,62 +12,62 @@
 
 <table>
     </BR></BR>
-<#if oleNoticeBo.noticeTitle == "Return With Missing Item Notice">
-    <TR>
-        <TD>${oleNoticeContentConfigurationBo.getFieldLabel("Circulation Location/Library Name")} :</TD>
-        <#if oleNoticeBo.oleCirculationDesk ??>
-            <TD>${oleNoticeBo.oleCirculationDesk.circulationDeskPublicName}</TD>
-        <#else>
-            <TD</TD>
-        </#if>
-    </TR>
-</#if>
-    <TR>
-        <TD>${oleNoticeContentConfigurationBo.getFieldLabel("Patron Name")} :</TD>
-        <#if oleNoticeBo.patronName ??  >
-            <TD>${oleNoticeBo.patronName}</TD>
-       <#else>
-           <TD></TD>
-        </#if>
-
-    </TR>
-
-    <TR>
-        <TD>${oleNoticeContentConfigurationBo.getFieldLabel("Patron Name")} :</TD>
-        <#if oleNoticeBo.patronName ??  >
-            <TD>${oleNoticeBo.patronName}</TD>
-       <#else>
-           <TD></TD>
-        </#if>
-
-    </TR>
-    <TR>
-        <TD>${oleNoticeContentConfigurationBo.getFieldLabel("Address")} :</TD>
-        <#if oleNoticeBo.patronAddress??>
-            <TD>${oleNoticeBo.patronAddress}</TD>
-        <#else>
-            <TD</TD>
-        </#if>
-
-    </TR>
-    <TR>
-        <TD>${oleNoticeContentConfigurationBo.getFieldLabel("Email")} :</TD>
-        <#if oleNoticeBo.patronEmailAddress??>
-            <TD>${oleNoticeBo.patronEmailAddress}</TD>
-        <#else>
-            <TD</TD>
-        </#if>
-
-    </TR>
-    <TR>
-        <TD>${oleNoticeContentConfigurationBo.getFieldLabel("Phone #")} :</TD>
-    <#if oleNoticeBo.patronPhoneNumber??>
-        <TD>${oleNoticeBo.patronPhoneNumber}</TD>
-    <#else>
-        <TD</TD>
+    <#if oleNoticeContentConfigurationBo.oleNoticeFieldLabelMappings ??>
+        <#list oleNoticeContentConfigurationBo.oleNoticeFieldLabelMappings as oleNoticeFieldLabelMapping>
+            <#switch oleNoticeFieldLabelMapping.fieldName>
+                <#case "Circulation Location/Library Name">
+                    <TR>
+                        <TD>${oleNoticeContentConfigurationBo.getFieldLabel("Circulation Location/Library Name")} :</TD>
+                        <#if oleNoticeBo.oleCirculationDesk ??>
+                            <TD>${oleNoticeBo.oleCirculationDesk.circulationDeskPublicName}</TD>
+                        <#else>
+                            <TD</TD>
+                        </#if>
+                    </TR>
+                    <#break>
+                <#case "Patron Name">
+                    <TR>
+                        <TD>${oleNoticeContentConfigurationBo.getFieldLabel("Patron Name")} :</TD>
+                        <#if oleNoticeBo.patronName ??  >
+                            <TD>${oleNoticeBo.patronName}</TD>
+                        <#else>
+                            <TD></TD>
+                        </#if>
+                    </TR>
+                    <#break>
+                <#case "Address">
+                    <TR>
+                        <TD>${oleNoticeContentConfigurationBo.getFieldLabel("Address")} :</TD>
+                        <#if oleNoticeBo.patronAddress ??  >
+                            <TD>${oleNoticeBo.patronAddress}</TD>
+                        <#else>
+                            <TD></TD>
+                        </#if>
+                    </TR>
+                    <#break>
+                <#case "Email">
+                    <TR>
+                        <TD>${oleNoticeContentConfigurationBo.getFieldLabel("Email")} :</TD>
+                        <#if oleNoticeBo.patronEmailAddress ??  >
+                            <TD>${oleNoticeBo.patronEmailAddress}</TD>
+                        <#else>
+                            <TD></TD>
+                        </#if>
+                    </TR>
+                    <#break>
+                <#case "Phone #">
+                    <TR>
+                        <TD>${oleNoticeContentConfigurationBo.getFieldLabel("Phone #")} :</TD>
+                        <#if oleNoticeBo.patronPhoneNumber ??  >
+                            <TD>${oleNoticeBo.patronPhoneNumber}</TD>
+                        <#else>
+                            <TD></TD>
+                        </#if>
+                    </TR>
+                    <#break>
+            </#switch>
+        </#list>
     </#if>
-
-    </TR>
 </table>
 
 <br/>
@@ -112,11 +111,9 @@
 
 
 <#list oleNoticeBos as oleNoticeBo>
-    <#if oleNoticeBo.noticeTitle == "Lost">
-        <@bill.bill oleNoticeBo=oleNoticeBo oleNoticeContentConfigurationBo=oleNoticeContentConfigurationBo></@bill.bill>
+    <#if oleNoticeContentConfigurationBo??>
+        <@itemInfo.item oleNoticeBo=oleNoticeBo oleNoticeContentConfigurationBo=oleNoticeContentConfigurationBo></@itemInfo.item>
     </#if>
-<br/>
-    <@itemInfo.item oleNoticeBo=oleNoticeBo oleNoticeContentConfigurationBo=oleNoticeContentConfigurationBo></@itemInfo.item>
 <#if oleNoticeBo_has_next>
 ********************************************************************
 </#if>

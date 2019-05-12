@@ -27,7 +27,9 @@ public class CheckinForm extends OLEForm {
     private ErrorMessage errorMessage;
 
     private boolean recordNoteForClaimsReturn;
+    private boolean itemFoundInLibrary;
     private boolean recordNoteForDamagedItem;
+    private boolean recordNoteForLostItemWithBill;
     private boolean recordNoteForMissingPiece;
 
     private String missingPieceMatchCheck;
@@ -40,6 +42,8 @@ public class CheckinForm extends OLEForm {
     private String routeToLocation;
     private boolean printOnHoldSlipQueue;
     private String printFormat;
+
+    private String locationPopupMsg;
 
     public String getSelectedCirculationDesk() {
         return selectedCirculationDesk;
@@ -83,8 +87,10 @@ public class CheckinForm extends OLEForm {
         this.missingPieceCount = "";
         this.missingPieceNote = "";
         this.recordNoteForClaimsReturn = false;
+        this.itemFoundInLibrary = false;
         this.recordNoteForDamagedItem = false;
         this.recordNoteForMissingPiece = false;
+        this.recordNoteForLostItemWithBill = false;
     }
 
     public String getItemBarcode() {
@@ -254,5 +260,29 @@ public class CheckinForm extends OLEForm {
 
     public void setPrintFormat(String printFormat) {
         this.printFormat = printFormat;
+    }
+
+    public String getLocationPopupMsg() {
+        return locationPopupMsg;
+    }
+
+    public void setLocationPopupMsg(String locationPopupMsg) {
+        this.locationPopupMsg = locationPopupMsg;
+    }
+
+    public boolean isItemFoundInLibrary() {
+        return itemFoundInLibrary;
+    }
+
+    public void setItemFoundInLibrary(boolean itemFoundInLibrary) {
+        this.itemFoundInLibrary = itemFoundInLibrary;
+    }
+
+    public boolean isRecordNoteForLostItemWithBill() {
+        return recordNoteForLostItemWithBill;
+    }
+
+    public void setRecordNoteForLostItemWithBill(boolean recordNoteForLostItemWithBill) {
+        this.recordNoteForLostItemWithBill = recordNoteForLostItemWithBill;
     }
 }

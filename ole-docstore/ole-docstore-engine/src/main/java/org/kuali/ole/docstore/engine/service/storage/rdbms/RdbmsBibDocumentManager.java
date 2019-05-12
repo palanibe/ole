@@ -6,10 +6,17 @@ import org.kuali.ole.DocumentUniqueIDPrefix;
 import org.kuali.ole.audit.BibAudit;
 import org.kuali.ole.audit.OleAuditManager;
 import org.kuali.ole.docstore.DocStoreConstants;
+import org.kuali.ole.docstore.common.constants.DocstoreConstants;
 import org.kuali.ole.docstore.common.document.*;
 import org.kuali.ole.docstore.common.exception.DocstoreException;
 import org.kuali.ole.docstore.common.exception.DocstoreResources;
 import org.kuali.ole.docstore.common.exception.DocstoreValidationException;
+import org.kuali.ole.docstore.common.search.SearchParams;
+import org.kuali.ole.docstore.common.search.SearchResponse;
+import org.kuali.ole.docstore.common.search.SearchResult;
+import org.kuali.ole.docstore.common.search.SearchResultField;
+import org.kuali.ole.docstore.engine.service.search.DocstoreSearchService;
+import org.kuali.ole.docstore.engine.service.search.DocstoreSolrSearchService;
 import org.kuali.ole.docstore.engine.service.storage.rdbms.pojo.*;
 import org.kuali.ole.docstore.engine.service.storage.rdbms.pojo.BibHoldingsRecord;
 import org.kuali.ole.docstore.engine.service.storage.rdbms.pojo.BibRecord;
@@ -59,6 +66,7 @@ public class RdbmsBibDocumentManager extends RdbmsAbstarctDocumentManager {
         bibRecord.setFormerId("");
         bibRecord.setSuppressFromPublic(String.valueOf(bib.isPublic()));
         bibRecord.setStatus(bib.getStatus());
+        bibRecord.setUpdatedBy(bib.getCreatedBy());
         bibRecord.setDateEntered(getTimeStampFromString(bib.getCreatedOn()));
         bibRecord.setStaffOnlyFlag(bib.isStaffOnly());
         bibRecord.setUniqueIdPrefix(DocumentUniqueIDPrefix.getPrefix(bib.getCategory(), bib.getType(), bib.getFormat()));
@@ -91,7 +99,24 @@ public class RdbmsBibDocumentManager extends RdbmsAbstarctDocumentManager {
             docstoreException.addErrorParams("bibId", bib.getId());
             throw docstoreException;
         }
+        Map parentCriteriaForItem = new HashMap();
+
         updateAdditionalAttributes(bib, bibRecord);
+        if(!bibRecord.getStaffOnlyFlag().toString().equalsIgnoreCase(String.valueOf(bib.isStaffOnly()))){
+            List<HoldingsRecord> holdingsRecords = (List<HoldingsRecord>) getBusinessObjectService().findMatching(HoldingsRecord.class, parentCriteria);
+            for(HoldingsRecord holdingsRecord:holdingsRecords){
+                parentCriteriaForItem.put("holdingsId", holdingsRecord.getHoldingsId());
+                holdingsRecord.setStaffOnlyFlag(bib.isStaffOnly());
+                List<ItemRecord> itemRecords = (List<ItemRecord>) getBusinessObjectService().findMatching(ItemRecord.class, parentCriteriaForItem);
+                  for(ItemRecord itemRecord:itemRecords){
+                      itemRecord.setStaffOnlyFlag(bib.isStaffOnly());
+                  }
+                getBusinessObjectService().save(itemRecords);
+            }
+            getBusinessObjectService().save(holdingsRecords);
+
+          }
+
         if (bibRecord != null) {
             bibRecord.setContent(bib.getContent());
             bibRecord.setFassAddFlag(bib.isFastAdd());
@@ -101,14 +126,16 @@ public class RdbmsBibDocumentManager extends RdbmsAbstarctDocumentManager {
         }
 
         createBibInfoRecord(bibRecord);
-        try {
-            OleAuditManager.getInstance().audit(BibAudit.class,oldBibRecord,bibRecord,bibRecord.getBibId(),"ole");
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-        } catch (IllegalAccessException e) {
-            e.printStackTrace();
-        } catch (InstantiationException e) {
-            e.printStackTrace();
+        if (Boolean.TRUE == isAuditRequired()) {
+            try {
+                OleAuditManager.getInstance().audit(BibAudit.class,oldBibRecord,bibRecord,bibRecord.getBibId(),"ole");
+            } catch (ClassNotFoundException e) {
+                e.printStackTrace();
+            } catch (IllegalAccessException e) {
+                e.printStackTrace();
+            } catch (InstantiationException e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -334,9 +361,6 @@ public class RdbmsBibDocumentManager extends RdbmsAbstarctDocumentManager {
         if (bibRecord.getFassAddFlag() != null) {
             bibMarc.setFastAdd(bibRecord.getFassAddFlag());
         }
-        if (bibRecord.getDateEntered() != null && !"".equals(bibRecord.getDateEntered())) {
-            bibMarc.setCreatedBy(bibRecord.getDateEntered().toString());
-        }
         if (bibRecord.getStatus() != null) {
             bibMarc.setStatus(bibRecord.getStatus());
         }
@@ -463,4 +487,47 @@ public class RdbmsBibDocumentManager extends RdbmsAbstarctDocumentManager {
         }
         checkUuidsToDelete(uuids, uuidCount);
     }
+
+    public void saveDeletedBibs(List<Bib> bibs) throws Exception{
+        for(Bib bib:bibs){
+            BibDeletionRecord bibDeletionRecord= new BibDeletionRecord();
+            bibDeletionRecord.setBibId(DocumentUniqueIDPrefix.getDocumentId(bib.getId()));
+            bibDeletionRecord.setBibIdIndicator("Y");
+            bibDeletionRecord.setContent(bib.getContent());
+            bibDeletionRecord.setDateUpdated(new Timestamp(new Date().getTime()));
+            getBusinessObjectService().save(bibDeletionRecord);
+        }
+
+    }
+
+    public void saveDeletedHolding(Holdings holding) {
+        BibDeletionRecord bibDeletionRecord= new BibDeletionRecord();
+        if(holding.getBib() != null){
+            bibDeletionRecord.setBibId(DocumentUniqueIDPrefix.getDocumentId(holding.getBib().getId()));
+        }
+        if(StringUtils.isNotBlank(holding.getId())){
+            bibDeletionRecord.setHoldingId(DocumentUniqueIDPrefix.getDocumentId(holding.getId()));
+        }
+        bibDeletionRecord.setBibIdIndicator("N");
+        bibDeletionRecord.setHoldingIdIndicator("Y");
+        bibDeletionRecord.setDateUpdated(new Timestamp(new Date().getTime()));
+        getBusinessObjectService().save(bibDeletionRecord);
+    }
+
+    public void saveDeletedItem(Item item) {
+        BibDeletionRecord bibDeletionRecord= new BibDeletionRecord();
+        if(item.getHolding().getBib() != null){
+            bibDeletionRecord.setBibId(DocumentUniqueIDPrefix.getDocumentId(item.getHolding().getBib().getId()));
+        }
+        if(StringUtils.isNotBlank(item.getHolding().getId())){
+            bibDeletionRecord.setHoldingId(DocumentUniqueIDPrefix.getDocumentId(item.getHolding().getId()));
+        }
+        bibDeletionRecord.setItemId(DocumentUniqueIDPrefix.getDocumentId(item.getId()));
+        bibDeletionRecord.setBibIdIndicator("N");
+        bibDeletionRecord.setHoldingIdIndicator("N");
+        bibDeletionRecord.setItemIdIndicator("Y");
+        bibDeletionRecord.setDateUpdated(new Timestamp(new Date().getTime()));
+        getBusinessObjectService().save(bibDeletionRecord);
+    }
+
 }

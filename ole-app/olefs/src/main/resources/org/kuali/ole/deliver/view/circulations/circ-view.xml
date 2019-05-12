@@ -48,12 +48,16 @@
             <list>
                <bean id="circDeskChangeDialog" parent="cirDeskChangeConfirmationDialog"/>
                <bean id="ptrnValidationErrorMessageDialog" parent="patronValidationErrorMessageDialog"/>
+               <bean id="holdValidationErrorMessageDialog" parent="itemHoldValidationErrorMessageDialog"/>
                <bean id="overrideMessageDialog" parent="operatorOverrideMessageDialog"/>
                <bean id="proxyListCheckoutDialog" parent="proxyForPatronListDialog"/>
                <bean id="customDueDateDialog" parent="customDueDateConfirmationDialog"/>
                <bean id="generalMessageAndResetUIDialog" parent="generalOkMessageDialog"/>
                <bean id="fastAddDialog" parent="fastAddItemDialog"/>
                <bean id="claimsReturnDialog" parent="claimsReturnNoteDialog"/>
+               <bean id="checkForRequestExistsDialog" parent="checkingForRequestExistsDialog"/>
+               <bean id="checkForRequestExistsLostItemDialog" parent="checkingForRequestExistsLostItemDialog"/>
+               <bean id="checkForRequestExistsLostItemReplaceCopyDialog" parent="checkingForRequestExistsLostItemReplaceCopyDialog"/>
                <bean id="generalInfoDialog" parent="generalInfoMessageDialog"/>
                <bean id="generalInfoWithRefreshDialog" parent="generalInfoWithRefreshMessageDialog"/>
                <bean id="alterDueDateDialog" parent="alterDueDateSectionDialog"/>
@@ -62,6 +66,8 @@
                 <bean id="renewOverrideDialog" parent="renewOverrideSectionDialog"/>
                 <bean id="checkoutRenewOptionDialog" parent="checkoutRenewOptionSectionDialog"/>
                 <bean id="checkoutRenewCustomDueDateConfirmationDialog" parent="checkoutRenewCustomDueDateConfirmationSectionDialog"/>
+                <bean id="renewLostItemDialogMsg" parent="renewLostItemDialog"/>
+                <bean id="renewLostItemsDialogMsg" parent="renewLostItemsDialog"/>
                 <bean id="checkoutClaimsReturnDialog" parent="checkoutClaimsReturnNoteDialog"/>
                 <bean id="checkoutMissingPieceDialog" parent="checkoutMissingPieceNoteDialog"/>
                 <bean id="checkoutDamagedItemDialog" parent="checkoutDamagedItemNoteDialog"/>
@@ -69,6 +75,9 @@
                 <bean id="dueDateTruncated" parent="dueDateTruncatedDialog"/>
                 <bean id="itemAlreadyLoaned" parent="itemAlreadyLoanedDialog"/>
                 <bean id="blockCheckinProcessDialog" parent="blockCheckinDialog"/>
+                <bean id="itemLostDialog" parent="itemLostNoteDialog"/>
+                <bean id="itemReplaceDialog" parent="itemReplaceNoteDialog"/>
+                <bean id="patronInvalidOrLostDialog" parent="patronInvalidOrLostMsgDialog"/>
             </list>
         </property>
 

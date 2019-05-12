@@ -127,7 +127,7 @@ public class OleInvoiceAction extends InvoiceAction {
                         Iterator iterator = exchangeRateList.iterator();
                         if (iterator.hasNext()) {
                             OleExchangeRate tempOleExchangeRate = (OleExchangeRate) iterator.next();
-                            items.setItemExchangeRate(new KualiDecimal(tempOleExchangeRate.getExchangeRate()));
+                            items.setItemExchangeRate(tempOleExchangeRate.getExchangeRate());
                             payDoc.setForeignVendorInvoiceAmount(payDoc.getVendorInvoiceAmount().bigDecimalValue()
                                     .multiply(tempOleExchangeRate.getExchangeRate()));
                         }
@@ -137,7 +137,7 @@ public class OleInvoiceAction extends InvoiceAction {
                             if (rulePassed) {
                                 SpringContext.getBean(OlePurapService.class).calculateForeignCurrency(items);
                                 if (items.getItemExchangeRate() != null && items.getItemForeignUnitCost() != null) {
-                                    items.setItemUnitCostUSD(new KualiDecimal(items.getItemForeignUnitCost().bigDecimalValue().divide(items.getItemExchangeRate().bigDecimalValue(), 4, RoundingMode.HALF_UP)));
+                                    items.setItemUnitCostUSD(new KualiDecimal(items.getItemForeignUnitCost().bigDecimalValue().divide(items.getItemExchangeRate(), 4, RoundingMode.HALF_UP)));
                                     items.setItemUnitPrice(items.getItemUnitCostUSD().bigDecimalValue());
                                     items.setItemListPrice(items.getItemUnitCostUSD());
                                     items.setPurchaseOrderItemUnitPrice(items.getItemUnitPrice());
@@ -150,7 +150,7 @@ public class OleInvoiceAction extends InvoiceAction {
                                 if (items.isAdditionalChargeUsd()) {
                                     items.setItemUnitPrice(items.getForeignCurrencyExtendedPrice().bigDecimalValue());
                                 } else {
-                                    items.setItemUnitPrice(items.getForeignCurrencyExtendedPrice().bigDecimalValue().divide(items.getItemExchangeRate().bigDecimalValue(), 4, RoundingMode.HALF_UP));
+                                    items.setItemUnitPrice(items.getForeignCurrencyExtendedPrice().bigDecimalValue().divide(items.getItemExchangeRate(), 4, RoundingMode.HALF_UP));
                                 }
                             }
                         }
@@ -308,10 +308,10 @@ public class OleInvoiceAction extends InvoiceAction {
                     Iterator iterator = exchangeRateList.iterator();
                     if (iterator.hasNext()) {
                         OleExchangeRate tempOleExchangeRate = (OleExchangeRate) iterator.next();
-                        item.setItemExchangeRate(new KualiDecimal(tempOleExchangeRate.getExchangeRate()));
+                        item.setItemExchangeRate(tempOleExchangeRate.getExchangeRate());
                     }
                     if (item.getItemExchangeRate() != null && item.getItemForeignUnitCost() != null) {
-                        item.setItemUnitCostUSD(new KualiDecimal(item.getItemForeignUnitCost().bigDecimalValue().divide(item.getItemExchangeRate().bigDecimalValue(), 4, RoundingMode.HALF_UP)));
+                        item.setItemUnitCostUSD(new KualiDecimal(item.getItemForeignUnitCost().bigDecimalValue().divide(item.getItemExchangeRate(), 4, RoundingMode.HALF_UP)));
                         item.setItemUnitPrice(item.getItemUnitCostUSD().bigDecimalValue());
                         item.setItemListPrice(item.getItemUnitCostUSD());
                     }
@@ -362,13 +362,13 @@ public class OleInvoiceAction extends InvoiceAction {
                 iterator = exchangeRateList.iterator();
                 if (iterator.hasNext()) {
                     OleExchangeRate tempOleExchangeRate = (OleExchangeRate) iterator.next();
-                    item.setItemExchangeRate(new KualiDecimal(tempOleExchangeRate.getExchangeRate()));
+                    item.setItemExchangeRate(tempOleExchangeRate.getExchangeRate());
                 }
             }
             iterator = exchangeRateList.iterator();
             if (iterator.hasNext()) {
                 OleExchangeRate tempOleExchangeRate = (OleExchangeRate) iterator.next();
-                newLineItem.setItemExchangeRate(new KualiDecimal(tempOleExchangeRate.getExchangeRate()));
+                newLineItem.setItemExchangeRate(tempOleExchangeRate.getExchangeRate());
             }
         }
         rqForm.getAndResetNewPurchasingItemLine();
@@ -439,7 +439,7 @@ public class OleInvoiceAction extends InvoiceAction {
                     lineItem.setAmount((item.getTotalAmount().multiply(new KualiDecimal(percent))));
                 } else if (lineItem.getAmount() != null && lineItem.getAccountLinePercent() == null) {
                     KualiDecimal dollar = lineItem.getAmount().multiply(new KualiDecimal(100));
-                    BigDecimal dollarToPercent = dollar.bigDecimalValue().divide((item.getTotalAmount().bigDecimalValue()), 0, RoundingMode.FLOOR);
+                    BigDecimal dollarToPercent = dollar.bigDecimalValue().divide((item.getTotalAmount().bigDecimalValue()), 2, RoundingMode.FLOOR);
                     lineItem.setAccountLinePercent(dollarToPercent);
                 }
                 line = (PurApAccountingLine) ObjectUtils.deepCopy(lineItem);

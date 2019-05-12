@@ -5,6 +5,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.kuali.ole.DocumentUniqueIDPrefix;
 import org.kuali.ole.OLEConstants;
+import org.kuali.ole.deliver.bo.OLEDeliverNotice;
 import org.kuali.ole.deliver.bo.OleLoanDocument;
 import org.kuali.ole.deliver.bo.OlePatronDocument;
 import org.kuali.ole.deliver.calendar.service.DateUtil;
@@ -13,6 +14,7 @@ import org.kuali.ole.deliver.drools.DroolsConstants;
 import org.kuali.ole.deliver.form.CheckinForm;
 import org.kuali.ole.deliver.form.CircForm;
 import org.kuali.ole.deliver.form.OleLoanForm;
+import org.kuali.ole.deliver.service.ClaimsReturnedNoticesExecutor;
 import org.kuali.ole.deliver.service.OleDeliverRequestDocumentHelperServiceImpl;
 import org.kuali.ole.deliver.service.ParameterValueResolver;
 import org.kuali.ole.deliver.util.DroolsResponse;
@@ -21,6 +23,7 @@ import org.kuali.ole.deliver.util.OleItemRecordForCirc;
 import org.kuali.ole.docstore.common.document.content.instance.ItemClaimsReturnedRecord;
 import org.kuali.ole.docstore.common.document.content.instance.ItemDamagedRecord;
 import org.kuali.ole.docstore.common.document.content.instance.MissingPieceItemRecord;
+import org.kuali.ole.sys.context.SpringContext;
 import org.kuali.rice.core.api.config.property.ConfigContext;
 import org.kuali.rice.krad.util.GlobalVariables;
 import org.kuali.rice.krad.web.form.UifFormBase;
@@ -296,6 +299,10 @@ public class CheckoutItemController extends CircFastAddItemController {
         if(StringUtils.isNotBlank(recordNoteForClaimChecked)) {
             circForm.setRecordNoteForClaimsReturn(Boolean.valueOf(recordNoteForClaimChecked));
         }
+        String isItemFoundInLibrary = request.getParameter("isItemFoundInLibrary");
+        if (StringUtils.isNotBlank(isItemFoundInLibrary)) {
+            circForm.setItemFoundInLibrary(Boolean.valueOf(isItemFoundInLibrary));
+        }
     }
 
     @RequestMapping(params = "methodToCall=proceedToValidateItemAndSaveLoan")
@@ -382,7 +389,9 @@ public class CheckoutItemController extends CircFastAddItemController {
         if (droolsResponse != null && org.apache.commons.lang.StringUtils.isNotBlank(droolsResponse.getErrorMessage().getErrorMessage())) {
             if (droolsResponse.retriveErrorCode() != null) {
                 droolsResponse.getErrorMessage().clearErrorMessage();
-                if (droolsResponse.retriveErrorCode().equalsIgnoreCase(DroolsConstants.ITEM_CLAIMS_RETURNED)) {
+                if (droolsResponse.retriveErrorCode().equalsIgnoreCase(DroolsConstants.ITEM_LOST)) {
+                    droolsResponse.addErrorMessage("Item cannot be loaned, Item statis is ''lost'");
+                } else if (droolsResponse.retriveErrorCode().equalsIgnoreCase(DroolsConstants.ITEM_CLAIMS_RETURNED)) {
                     droolsResponse.addErrorMessage("Item is Claims Returned. So the checkin process has to be handled manually");
                 } else if (droolsResponse.retriveErrorCode().equalsIgnoreCase(DroolsConstants.ITEM_MISSING_PIECE)) {
                     droolsResponse.addErrorMessage("Item has missing pieces. So the checkin process has to be handled manually");
@@ -402,11 +411,11 @@ public class CheckoutItemController extends CircFastAddItemController {
         return getUIFModelAndView(circForm);
     }
 
-    public void createClaimsReturnForItem(CircForm circForm, List<OleLoanDocument> loanDocumentList, OlePatronDocument olePatronDocument) throws Exception {
+    public void createClaimsReturnForItem(CircForm circForm, List<OleLoanDocument> loanDocumentList, OlePatronDocument olePatronDocument,String cancelRequest) throws Exception {
         if (CollectionUtils.isNotEmpty(loanDocumentList)) {
             for (Iterator<OleLoanDocument> iterator = loanDocumentList.iterator(); iterator.hasNext(); ) {
                 OleLoanDocument oleLoanDocument = iterator.next();
-                List<ItemClaimsReturnedRecord> itemClaimsReturnedRecords = updateClaimsReturnedHistory(oleLoanDocument, olePatronDocument.getBarcode());
+                List<ItemClaimsReturnedRecord> itemClaimsReturnedRecords = updateClaimsReturnedHistory(oleLoanDocument, olePatronDocument);
                 Map parameterMap = new HashMap();
                 parameterMap.put("claimsReturnNote", oleLoanDocument.getClaimsReturnNote());
                 parameterMap.put("ClaimsReturnedDate", convertToString(oleLoanDocument.getClaimsReturnedDate()));
@@ -415,9 +424,34 @@ public class CheckoutItemController extends CircFastAddItemController {
                 parameterMap.put("patronId", olePatronDocument.getOlePatronId());
                 parameterMap.put("proxyPatronId", oleLoanDocument.getProxyPatronId());
                 getCheckoutUIController(circForm.getFormKey()).updateItemInfoInSolr(parameterMap, oleLoanDocument.getItemUuid(), false);
-                new OleDeliverRequestDocumentHelperServiceImpl().cancelPendingRequestForClaimsReturnedItem(oleLoanDocument.getItemUuid());
+                if(cancelRequest!=null && cancelRequest.equalsIgnoreCase("true")){
+                    new OleDeliverRequestDocumentHelperServiceImpl().cancelPendingRequestForClaimsReturnedItem(oleLoanDocument.getItemUuid());
+                }
             }
         }
+    }
+
+    public void sendClaimsReturnedNotice(OleLoanDocument oleLoanDocument) {
+        Map claimMap = new HashMap();
+        List<OleLoanDocument> oleLoanDocuments = Arrays.asList(oleLoanDocument);
+        List<OleLoanDocument> oleLoanDocumentWithItemInfo = new ArrayList<>();
+        try{
+            OleDeliverRequestDocumentHelperServiceImpl oleDeliverRequestDocumentHelperService = SpringContext.getBean(OleDeliverRequestDocumentHelperServiceImpl.class);
+            oleLoanDocumentWithItemInfo = oleDeliverRequestDocumentHelperService.getLoanDocumentWithItemInfo(oleLoanDocuments,"false");
+        }catch (Exception e){
+            LOG.info("Exception occured while setting the item info " + e.getMessage());
+            LOG.error(e,e);
+        }
+
+        claimMap.put(OLEConstants.LOAN_DOCUMENTS, oleLoanDocumentWithItemInfo);
+        for (OLEDeliverNotice oleDeliverNotice : oleLoanDocument.getDeliverNotices()) {
+            if (oleDeliverNotice != null && oleDeliverNotice.getNoticeType().equalsIgnoreCase(OLEConstants.CLAIMS_RETURNED_NOTICE)) {
+                claimMap.put(OLEConstants.NOTICE_CONTENT_CONFIG_NAME, oleDeliverNotice.getNoticeContentConfigName());
+                break;
+            }
+        }
+        Runnable claimsReturnedNoticesExecutor = new ClaimsReturnedNoticesExecutor(claimMap);
+        claimsReturnedNoticesExecutor.run();
     }
 
     public void deleteClaimsReturnForItem(CircForm circForm, List<OleLoanDocument> loanDocumentList) throws Exception {
@@ -431,12 +465,16 @@ public class CheckoutItemController extends CircFastAddItemController {
                     oleLoanDocument.setClaimsReturnNote(null);
                     oleLoanDocument.setClaimsReturnedDate(null);
                 }
+                oleLoanDocument.setLastClaimsReturnedSearchedDate(null);
+                oleLoanDocument.setClaimsSearchCount(0);
+                oleLoanDocument.setNoOfClaimsReturnedNoticesSent(0);
             }
+            getBusinessObjectService().save(loanDocumentList);
         }
     }
 
-    private List<ItemClaimsReturnedRecord> updateClaimsReturnedHistory(OleLoanDocument existingLoanDocument, String patronBarcode) {
-        SimpleDateFormat dateFormatForClaimsReturn = new SimpleDateFormat("MM/dd/yyyy hh:mm:ss");
+    private List<ItemClaimsReturnedRecord> updateClaimsReturnedHistory(OleLoanDocument existingLoanDocument, OlePatronDocument olePatronDocument) {
+        SimpleDateFormat dateFormatForClaimsReturn = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss");
         Map<String, String> map = new HashMap<>();
         map.put("itemId", DocumentUniqueIDPrefix.getDocumentId(existingLoanDocument.getItemUuid()));
         List<org.kuali.ole.docstore.engine.service.storage.rdbms.pojo.ItemClaimsReturnedRecord> claimsReturnedRecordList = (List<org.kuali.ole.docstore.engine.service.storage.rdbms.pojo.ItemClaimsReturnedRecord>) getBusinessObjectService().findMatchingOrderBy(org.kuali.ole.docstore.engine.service.storage.rdbms.pojo.ItemClaimsReturnedRecord.class, map, "claimsReturnedId", true);
@@ -450,13 +488,15 @@ public class CheckoutItemController extends CircFastAddItemController {
             }
             claimsReturnedRecord.setClaimsReturnedNote(itemClaimsReturnedRecord.getClaimsReturnedNote());
             claimsReturnedRecord.setClaimsReturnedPatronBarcode(itemClaimsReturnedRecord.getClaimsReturnedPatronBarcode());
+            claimsReturnedRecord.setClaimsReturnedPatronId(itemClaimsReturnedRecord.getClaimsReturnedPatronId());
             claimsReturnedRecord.setClaimsReturnedOperatorId(itemClaimsReturnedRecord.getClaimsReturnedOperatorId());
             claimsReturnedRecord.setItemId(itemClaimsReturnedRecord.getItemId());
             itemClaimsReturnedRecordList.add(claimsReturnedRecord);
         }
         ItemClaimsReturnedRecord claimsReturnedRecord = new ItemClaimsReturnedRecord();
         claimsReturnedRecord.setClaimsReturnedNote(existingLoanDocument.getClaimsReturnNote());
-        claimsReturnedRecord.setClaimsReturnedPatronBarcode(patronBarcode);
+        claimsReturnedRecord.setClaimsReturnedPatronBarcode(olePatronDocument.getBarcode());
+        claimsReturnedRecord.setClaimsReturnedPatronId(olePatronDocument.getOlePatronId());
         claimsReturnedRecord.setClaimsReturnedOperatorId(GlobalVariables.getUserSession().getPrincipalId());
         claimsReturnedRecord.setItemId(DocumentUniqueIDPrefix.getDocumentId(existingLoanDocument.getItemUuid()));
         claimsReturnedRecord.setClaimsReturnedFlagCreateDate(dateFormatForClaimsReturn.format(existingLoanDocument.getClaimsReturnedDate()));
@@ -469,7 +509,7 @@ public class CheckoutItemController extends CircFastAddItemController {
         if (CollectionUtils.isNotEmpty(loanDocumentList)) {
             for (Iterator<OleLoanDocument> iterator = loanDocumentList.iterator(); iterator.hasNext(); ) {
                 OleLoanDocument oleLoanDocument = iterator.next();
-                List<MissingPieceItemRecord> itemMissingPieceItemRecords = updateMissingPieceItemHistory(oleLoanDocument, olePatronDocument.getBarcode());
+                List<MissingPieceItemRecord> itemMissingPieceItemRecords = updateMissingPieceItemHistory(oleLoanDocument, olePatronDocument);
                 Map parameterMap = new HashMap();
                 parameterMap.put("missingPieceItemFlag", oleLoanDocument.isMissingPieceFlag());
                 parameterMap.put("missingPieceItemNote", oleLoanDocument.getMissingPieceNote());
@@ -486,8 +526,8 @@ public class CheckoutItemController extends CircFastAddItemController {
     }
 
 
-    private List<MissingPieceItemRecord> updateMissingPieceItemHistory(OleLoanDocument existingLoanDocument, String patronBarcode) {
-        SimpleDateFormat dateFormatForMissingItem = new SimpleDateFormat("MM/dd/yyyy hh:mm:ss");
+    private List<MissingPieceItemRecord> updateMissingPieceItemHistory(OleLoanDocument existingLoanDocument, OlePatronDocument olePatronDocument) {
+        SimpleDateFormat dateFormatForMissingItem = new SimpleDateFormat("MM/dd/yyyy hh:mm:ss a");
         Map<String, String> map = new HashMap<>();
         map.put("itemId", DocumentUniqueIDPrefix.getDocumentId(existingLoanDocument.getItemUuid()));
         List<org.kuali.ole.docstore.engine.service.storage.rdbms.pojo.MissingPieceItemRecord> missingPieceItemRecordList = (List<org.kuali.ole.docstore.engine.service.storage.rdbms.pojo.MissingPieceItemRecord>) getBusinessObjectService().findMatchingOrderBy(org.kuali.ole.docstore.engine.service.storage.rdbms.pojo.MissingPieceItemRecord.class, map, "missingPieceItemId", true);
@@ -502,6 +542,7 @@ public class CheckoutItemController extends CircFastAddItemController {
             missingPieceItemRecord.setMissingPieceFlagNote(itemMissingPieceItemRecord.getMissingPieceFlagNote());
             missingPieceItemRecord.setMissingPieceCount(itemMissingPieceItemRecord.getMissingPieceCount());
             missingPieceItemRecord.setPatronBarcode(itemMissingPieceItemRecord.getPatronBarcode());
+            missingPieceItemRecord.setPatronId(itemMissingPieceItemRecord.getPatronId());
             missingPieceItemRecord.setOperatorId(itemMissingPieceItemRecord.getOperatorId());
             missingPieceItemRecord.setItemId(itemMissingPieceItemRecord.getItemId());
             itemMissingPieceRecordList.add(missingPieceItemRecord);
@@ -509,7 +550,8 @@ public class CheckoutItemController extends CircFastAddItemController {
         MissingPieceItemRecord missingPieceItemRecord = new MissingPieceItemRecord();
         missingPieceItemRecord.setMissingPieceFlagNote(existingLoanDocument.getMissingPieceNote());
         missingPieceItemRecord.setMissingPieceCount(existingLoanDocument.getMissingPiecesCount());
-        missingPieceItemRecord.setPatronBarcode(patronBarcode);
+        missingPieceItemRecord.setPatronBarcode(olePatronDocument.getBarcode());
+        missingPieceItemRecord.setPatronId(olePatronDocument.getOlePatronId());
         missingPieceItemRecord.setOperatorId(GlobalVariables.getUserSession().getPrincipalId());
         missingPieceItemRecord.setItemId(DocumentUniqueIDPrefix.getDocumentId(existingLoanDocument.getItemUuid()));
         missingPieceItemRecord.setMissingPieceDate(dateFormatForMissingItem.format(existingLoanDocument.getMissingPieceItemDate()));
@@ -536,7 +578,7 @@ public class CheckoutItemController extends CircFastAddItemController {
         if (CollectionUtils.isNotEmpty(loanDocumentList)) {
             for (Iterator<OleLoanDocument> iterator = loanDocumentList.iterator(); iterator.hasNext(); ) {
                 OleLoanDocument oleLoanDocument = iterator.next();
-                List<ItemDamagedRecord> itemDamagedItemRecords = updateDamagedItemHistory(oleLoanDocument, olePatronDocument.getBarcode());
+                List<ItemDamagedRecord> itemDamagedItemRecords = updateDamagedItemHistory(oleLoanDocument, olePatronDocument);
                 Map parameterMap = new HashMap();
                 parameterMap.put("damagedItemNote", oleLoanDocument.getItemDamagedNote());
                 parameterMap.put("damagedItemDate", convertToString(oleLoanDocument.getDamagedItemDate()));
@@ -549,8 +591,8 @@ public class CheckoutItemController extends CircFastAddItemController {
         }
     }
 
-    private List<ItemDamagedRecord> updateDamagedItemHistory(OleLoanDocument existingLoanDocument, String patronBarcode) {
-        SimpleDateFormat dateFormatForDamagedItem = new SimpleDateFormat("MM/dd/yyyy hh:mm:ss");
+    private List<ItemDamagedRecord> updateDamagedItemHistory(OleLoanDocument existingLoanDocument, OlePatronDocument olePatronDocument) {
+        SimpleDateFormat dateFormatForDamagedItem = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss");
         Map<String, String> map = new HashMap<>();
         map.put("itemId", DocumentUniqueIDPrefix.getDocumentId(existingLoanDocument.getItemUuid()));
         List<org.kuali.ole.docstore.engine.service.storage.rdbms.pojo.ItemDamagedRecord> damagedItemRecordList = (List<org.kuali.ole.docstore.engine.service.storage.rdbms.pojo.ItemDamagedRecord>) getBusinessObjectService().findMatchingOrderBy(org.kuali.ole.docstore.engine.service.storage.rdbms.pojo.ItemDamagedRecord.class, map, "itemDamagedId", true);
@@ -564,13 +606,15 @@ public class CheckoutItemController extends CircFastAddItemController {
             }
             damagedItemRecord.setDamagedItemNote(itemDamagedItemRecord.getDamagedItemNote());
             damagedItemRecord.setPatronBarcode(itemDamagedItemRecord.getPatronBarcode());
+            damagedItemRecord.setDamagedPatronId(itemDamagedItemRecord.getDamagedPatronId());
             damagedItemRecord.setOperatorId(itemDamagedItemRecord.getOperatorId());
             damagedItemRecord.setItemId(itemDamagedItemRecord.getItemId());
             itemDamagedRecordList.add(damagedItemRecord);
         }
         ItemDamagedRecord damagedItemRecord = new ItemDamagedRecord();
         damagedItemRecord.setDamagedItemNote(existingLoanDocument.getItemDamagedNote());
-        damagedItemRecord.setPatronBarcode(patronBarcode);
+        damagedItemRecord.setPatronBarcode(olePatronDocument.getBarcode());
+        damagedItemRecord.setDamagedPatronId(olePatronDocument.getOlePatronId());
         damagedItemRecord.setOperatorId(GlobalVariables.getUserSession().getPrincipalId());
         damagedItemRecord.setItemId(DocumentUniqueIDPrefix.getDocumentId(existingLoanDocument.getItemUuid()));
         damagedItemRecord.setDamagedItemDate(dateFormatForDamagedItem.format(existingLoanDocument.getDamagedItemDate()));

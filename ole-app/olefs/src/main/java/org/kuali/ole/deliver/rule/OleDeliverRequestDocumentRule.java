@@ -1,5 +1,6 @@
 package org.kuali.ole.deliver.rule;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.net.ntp.TimeStamp;
 import org.kuali.asr.ASRConstants;
 import org.kuali.asr.service.ASRHelperServiceImpl;
@@ -7,11 +8,13 @@ import org.kuali.ole.OLEConstants;
 import org.kuali.ole.deliver.bo.ASRTypeRequest;
 import org.kuali.ole.deliver.bo.OLEDeliverNotice;
 import org.kuali.ole.deliver.bo.OleDeliverRequestBo;
+import org.kuali.ole.deliver.bo.OleCirculationHistory;
 import org.kuali.ole.deliver.bo.OlePatronDocument;
 import org.kuali.ole.deliver.notice.service.OleNoticeService;
 import org.kuali.ole.deliver.notice.service.impl.OleNoticeServiceImpl;
 import org.kuali.ole.deliver.processor.LoanProcessor;
 import org.kuali.ole.deliver.service.OleDeliverRequestDocumentHelperServiceImpl;
+import org.kuali.ole.deliver.service.ParameterValueResolver;
 import org.kuali.rice.krad.maintenance.MaintenanceDocument;
 import org.kuali.rice.krad.rules.MaintenanceDocumentRuleBase;
 import org.kuali.rice.krad.service.BusinessObjectService;
@@ -19,6 +22,7 @@ import org.kuali.rice.krad.service.KRADServiceLocator;
 import org.kuali.rice.krad.util.GlobalVariables;
 
 import java.sql.Date;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -36,6 +40,7 @@ public class OleDeliverRequestDocumentRule extends MaintenanceDocumentRuleBase {
       private ASRHelperServiceImpl asrHelperService = getAsrHelperService();
       private LoanProcessor loanProcessor =getLoanProcessor();
       private OleNoticeService oleNoticeService = getOleNoticeService();
+      private BusinessObjectService businessObjectService;
 
     public ASRHelperServiceImpl getAsrHelperService(){
         if(asrHelperService == null ){
@@ -58,8 +63,17 @@ public class OleDeliverRequestDocumentRule extends MaintenanceDocumentRuleBase {
         return oleNoticeService;
     }
 
+    public BusinessObjectService getBusinessObjectService() {
+          if(businessObjectService == null){
+              businessObjectService = KRADServiceLocator.getBusinessObjectService();
+          }
+        return businessObjectService;
+    }
+
+
     protected boolean processCustomSaveDocumentBusinessRules(MaintenanceDocument document) {
         OleDeliverRequestBo oleDeliverRequestBo = (OleDeliverRequestBo) document.getNewMaintainableObject().getDataObject();
+        OleDeliverRequestBo oldDeliverRequestBo = (OleDeliverRequestBo)document.getOldMaintainableObject().getDataObject();
         boolean processed = super.processCustomSaveDocumentBusinessRules(document);
         Map<String, String> patronMap = new HashMap<String, String>();
         BusinessObjectService businessObjectService = KRADServiceLocator.getBusinessObjectService();
@@ -120,12 +134,13 @@ public class OleDeliverRequestDocumentRule extends MaintenanceDocumentRuleBase {
                         LOG.error("Error occured while generating the notices " + e, e);  //To change body of catch statement use File | Settings | File Templates.
                     }
                 }
-                if (!oleDeliverRequestBo.getRequestTypeId().equals("8")) {
-                    oleDeliverRequestBo = service.updateLoanDocument(oleDeliverRequestBo);
-                    oleDeliverRequestBo.setOlePatron(null);
-                    oleDeliverRequestBo.setOleProxyPatron(null);
-                }
-            } else {
+            }
+            if (!oleDeliverRequestBo.getRequestTypeId().equals("8")) {
+//                oleDeliverRequestBo = service.updateLoanDocument(oleDeliverRequestBo);
+                oleDeliverRequestBo.setOlePatron(null);
+                oleDeliverRequestBo.setOleProxyPatron(null);
+            }
+            else {
                 service.processRequestType(oleDeliverRequestBo);
             }
 
@@ -143,7 +158,55 @@ public class OleDeliverRequestDocumentRule extends MaintenanceDocumentRuleBase {
                 businessObjectService.save(asrTypeRequest);
             }
           getOleNoticeService().processNoticeForRequest(oleDeliverRequestBo);
+            Map<String,String> criteriaMap = new HashMap<>();
+            criteriaMap.put("itemId",oleDeliverRequestBo.getItemId());
+            List<OleCirculationHistory> circulationHistoryRecords = (List<OleCirculationHistory>) getBusinessObjectService().findMatching(OleCirculationHistory.class,criteriaMap);
+            if(circulationHistoryRecords.size()>0 && oleDeliverRequestBo.getRequestId() != null) {
+                for(OleCirculationHistory oleCirculationHistory : circulationHistoryRecords) {
+                    if (StringUtils.isBlank(oleCirculationHistory.getOleRequestId())) {
+                        oleCirculationHistory.setOleRequestId(oleDeliverRequestBo.getRequestId());
+                        businessObjectService.save(oleCirculationHistory);
+                    }
+                }
+            }
+           /* else if (oleDeliverRequestBo.getRequestId() == null || circulationHistoryRecords.size()==0){
+                List<OleLoanDocument> oleLoanDocuments = (List<OleLoanDocument>) getBusinessObjectService().findMatching(OleLoanDocument.class, criteriaMap);
+                if (oleLoanDocuments.size() > 0) {
+                    for (OleLoanDocument oleLoanDocument : oleLoanDocuments) {
+                        Map<String,String> loanCriteriaMap = new HashMap<>();
+                        loanCriteriaMap.put("loanId", oleLoanDocument.getLoanId());
+                        circulationHistoryRecords = (List<OleCirculationHistory>) getBusinessObjectService().findMatching(OleCirculationHistory.class, loanCriteriaMap);
+                        if(circulationHistoryRecords.size()>0) {
+                            for(OleCirculationHistory oleCirculationHistory : circulationHistoryRecords) {
+                                if (StringUtils.isBlank(oleCirculationHistory.getOleRequestId())) {
+                                    oleCirculationHistory.setOleRequestId(oleLoanDocument.getOleRequestId());
+                                    businessObjectService.save(oleCirculationHistory);
+                                }
+
+                            }
+
+                        }
+                    }
+                }
+            }*/
         }
+
+        if((oleDeliverRequestBo.getHoldExpirationDate()!=null && oldDeliverRequestBo.getHoldExpirationDate() == null) ||
+                 (oleDeliverRequestBo.getHoldExpirationDate()==null && oldDeliverRequestBo.getHoldExpirationDate() !=null) ||
+                (oleDeliverRequestBo.getHoldExpirationDate()!=null && oldDeliverRequestBo.getHoldExpirationDate()!=null && oleDeliverRequestBo.getHoldExpirationDate().compareTo(oldDeliverRequestBo.getHoldExpirationDate())!=0)
+                ){
+                 if(oleDeliverRequestBo.getDeliverNotices()!=null){
+                    for(OLEDeliverNotice oleDeliverNotice:oleDeliverRequestBo.getDeliverNotices()){
+                        if(oleDeliverNotice.getNoticeType().equals(OLEConstants.ONHOLD_EXPIRATION_NOTICE)){
+                            oleDeliverNotice.setNoticeToBeSendDate(new Timestamp(oleDeliverRequestBo.getHoldExpirationDate().getTime()));
+                        }else if(oleDeliverNotice.getNoticeType().equals(OLEConstants.ONHOLD_COURTESY_NOTICE)){
+                            int noOfDaysBefore  = Integer.parseInt(ParameterValueResolver.getInstance().getParameter(OLEConstants.APPL_ID_OLE, OLEConstants
+                                    .DLVR_NMSPC, OLEConstants.DLVR_CMPNT, OLEConstants.OleDeliverRequest.ONHOLD_COURTESY_NOTICE_INTERVAL));
+                            oleDeliverNotice.setNoticeToBeSendDate(new Timestamp((oleDeliverRequestBo.getHoldExpirationDate().getTime() - (noOfDaysBefore* 24 * 3600 * 1000l))));
+                        }
+                    }
+                }
+            }
         return processed;
     }
 }

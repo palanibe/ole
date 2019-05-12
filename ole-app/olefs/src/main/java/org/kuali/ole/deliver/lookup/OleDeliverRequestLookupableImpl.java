@@ -4,6 +4,8 @@ import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
 import org.kuali.ole.OLEConstants;
 import org.kuali.ole.deliver.bo.OleDeliverRequestBo;
+import org.kuali.ole.deliver.bo.OleLoanDocument;
+import org.kuali.ole.deliver.controller.checkout.CircUtilController;
 import org.kuali.ole.deliver.service.OleDeliverRequestDocumentHelperServiceImpl;
 import org.kuali.ole.sys.context.SpringContext;
 import org.kuali.ole.util.DocstoreUtil;
@@ -98,6 +100,11 @@ public class OleDeliverRequestLookupableImpl extends LookupableImpl {
         searchCriteria.remove(OLEConstants.TITLE);
         searchCriteria.remove(OLEConstants.OlePatron.PATRON_FIRST_NAME);
         searchCriteria.remove(OLEConstants.OlePatron.PATRON_LAST_NAME);
+        String itemUuid = searchCriteria.get("itemUuid");
+        if(itemUuid !=null && !itemUuid.isEmpty() && !itemUuid.contains("wio-")){
+                itemUuid = "wio-"+itemUuid;
+                searchCriteria.put("itemUuid",itemUuid);
+            }
         List<OleDeliverRequestBo> displayList = new ArrayList<OleDeliverRequestBo>();
         List<EntityNameBo> entityNameBos = new ArrayList<EntityNameBo>();
         String modifiedBorrowerFirstName = firstName.trim();
@@ -145,6 +152,17 @@ public class OleDeliverRequestLookupableImpl extends LookupableImpl {
                     if (entityNameBos.size() > 0) {
                         displayList.get(i).setFirstName(entityNameBos.get(0).getFirstName());
                         displayList.get(i).setLastName(entityNameBos.get(0).getLastName());
+                    }
+                    if(oleDeliverRequestBo.getRequestTypeCode().contains(OLEConstants.OleDeliverRequest.RECALL)){
+                        CircUtilController circUtilController = new CircUtilController();
+                        OleLoanDocument oleLoanDocument = circUtilController.getLoanDocument(oleDeliverRequestBo.getItemId());
+                        if(oleLoanDocument != null)
+                            oleDeliverRequestBo.setRecallDueDate(oleLoanDocument.getLoanDueDate());
+                    }
+                    if(oleDeliverRequestBo.getItemStatus().contains(OLEConstants.OleDeliverRequest.INTRANSIT)){
+                        CircUtilController circUtilController = new CircUtilController();
+                        org.kuali.ole.docstore.engine.service.storage.rdbms.pojo.ItemRecord itemRecord = circUtilController.getItemRecordByBarcode(oleDeliverRequestBo.getItemId());
+                        oleDeliverRequestBo.setInTransitDate(itemRecord.getEffectiveDate());
                     }
                     oleDeliverRequestBoList.add(displayList.get(i));
                 }

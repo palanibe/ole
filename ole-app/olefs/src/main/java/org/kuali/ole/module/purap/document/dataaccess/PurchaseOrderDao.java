@@ -18,6 +18,7 @@ package org.kuali.ole.module.purap.document.dataaccess;
 import org.kuali.ole.module.purap.businessobject.AutoClosePurchaseOrderView;
 import org.kuali.ole.module.purap.document.PurchaseOrderDocument;
 
+import java.util.Collection;
 import java.util.List;
 
 
@@ -27,6 +28,12 @@ import java.util.List;
 public interface PurchaseOrderDao {
 
     public Integer getPurchaseOrderIdForCurrentPurchaseOrderByRelatedDocId(Integer accountsPayablePurchasingDocumentLinkIdentifier);
+
+    public List<PurchaseOrderDocument> getPurchaseOrderIdByRelatedDocId(Integer accountsPayablePurchasingDocumentLinkIdentifier);
+
+    public List<PurchaseOrderDocument> getCurrentPurchaseOrderListByRelatedDocId(Integer accountsPayablePurchasingDocumentLinkIdentifier);
+
+
 
     public PurchaseOrderDocument getCurrentPurchaseOrder(Integer id);
 
@@ -83,7 +90,7 @@ public interface PurchaseOrderDao {
      * @param poCloseToDate - end date
      * @return List of PurchaseOrderAutoClose objects
      */
-    public List<AutoClosePurchaseOrderView> getAllOpenPurchaseOrders(List<String> excludedVendorChoiceCodes, java.sql.Date poCloseFromDate, java.sql.Date poCloseToDate);
+    public List<AutoClosePurchaseOrderView> getAllOpenPurchaseOrders(List<String> excludedVendorChoiceCodes, java.sql.Date poCloseFromDate, java.sql.Date poCloseToDate, Collection<String> orderTypeString);
 
 
     /**

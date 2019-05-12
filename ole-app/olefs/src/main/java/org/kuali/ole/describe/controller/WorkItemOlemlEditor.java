@@ -10,7 +10,9 @@ import org.kuali.ole.OLEConstants;
 import org.kuali.ole.OLEParameterConstants;
 import org.kuali.ole.deliver.bo.ASRItem;
 import org.kuali.ole.deliver.bo.OLEReturnHistoryRecord;
+import org.kuali.ole.deliver.bo.OleCirculationHistory;
 import org.kuali.ole.deliver.service.OleDeliverRequestDocumentHelperServiceImpl;
+import org.kuali.ole.deliver.service.OleLoanDocumentDaoOjb;
 import org.kuali.ole.describe.bo.DocumentSelectionTree;
 import org.kuali.ole.describe.bo.DocumentTreeNode;
 import org.kuali.ole.describe.bo.InstanceEditorFormDataHandler;
@@ -49,6 +51,7 @@ import org.kuali.rice.krad.util.GlobalVariables;
 import org.kuali.rice.krad.util.KRADConstants;
 
 import javax.servlet.http.HttpServletRequest;
+import java.sql.Timestamp;
 import java.text.DateFormat;
 import java.text.Format;
 import java.text.ParseException;
@@ -72,6 +75,7 @@ public class WorkItemOlemlEditor extends AbstractEditor {
 
     private static WorkItemOlemlEditor workItemOlemlEditor = null;
     private InstanceEditorFormDataHandler instanceEditorFormDataHandler = null;
+    private OleLoanDocumentDaoOjb loanDaoOjb;
 
     DocstoreClient docstoreClient = getDocstoreLocalClient();
 
@@ -269,7 +273,7 @@ public class WorkItemOlemlEditor extends AbstractEditor {
                     }
                 }
                 this.addItemInformation(editorForm);
-                editorForm.setStaffOnlyFlagForItem(false);
+                setStaffOnly(editorForm);
                 editorForm.setItemCreatedBy(GlobalVariables.getUserSession().getPrincipalName());
                 editorForm.setItemCreatedDate(dateStr);
                 editorForm.setItemUpdatedBy(null);
@@ -316,6 +320,11 @@ public class WorkItemOlemlEditor extends AbstractEditor {
                     shelvingScheme.setCodeValue(callNumberDefaultValue);
                     oleItem.getCallNumber().setShelvingScheme(shelvingScheme);
                 }
+            }
+            OleCirculationHistory oleCirculationHistory = getLoanDaoOjb().retrieveCircHistoryRecord(oleItem.getItemIdentifier());
+            if(null != oleCirculationHistory) {
+                oleItem.setLastBorrower(oleCirculationHistory.getPatronId());
+                oleItem.setLastCheckinDate(new Timestamp(oleCirculationHistory.getCheckInDate().getTime()));
             }
         }
         return workInstanceOlemlForm;
@@ -869,6 +878,7 @@ public class WorkItemOlemlEditor extends AbstractEditor {
         if (StringUtils.isNotBlank(workInstanceOlemlForm.getSelectedItem().getPurchaseOrderLineItemIdentifier())) {
             Map poMap = new HashMap();
             poMap.put(OLEConstants.PURAP_DOC_IDENTIFIER, workInstanceOlemlForm.getSelectedItem().getPurchaseOrderLineItemIdentifier());
+            poMap.put("PO_CUR_IND", "Y" );
             OlePurchaseOrderDocument olePurchaseOrderDocument = KRADServiceLocator.getBusinessObjectService().findByPrimaryKey(OlePurchaseOrderDocument.class, poMap);
             if (olePurchaseOrderDocument != null) {
                 String poId = olePurchaseOrderDocument.getDocumentNumber();
@@ -901,6 +911,15 @@ public class WorkItemOlemlEditor extends AbstractEditor {
                             map.clear();
                         }
                     }
+                }
+                map.clear();
+                map.put(OLEConstants.OleDeliverRequest.ITEM_UUID, itemData.getItemIdentifier());
+                map.put(org.kuali.ole.sys.OLEConstants.OleCopy.PO_DOC_NUM, poId);
+                List<OleCopy> oleCopy = (List<OleCopy>) KRADServiceLocator.getBusinessObjectService().findMatching(OleCopy.class, map);
+                if (CollectionUtils.isNotEmpty(oleCopy)) {
+                    oleCopy.get(0).setEnumeration(itemData.getEnumeration());
+                    oleCopy.get(0).setCopyNumber(itemData.getCopyNumber());
+                    KRADServiceLocator.getBusinessObjectService().save(oleCopy);
                 }
             }
         }
@@ -948,15 +967,14 @@ public class WorkItemOlemlEditor extends AbstractEditor {
                         damagedRecord.setItemId(itemData.getItemIdentifier());
                     } else {
                         if (itemDamagedRecordList.get(index).getDamagedItemDate() != null && !itemDamagedRecordList.get(index).getDamagedItemDate().toString().isEmpty()) {
-                            SimpleDateFormat format1 = new SimpleDateFormat("MM/dd/yyyy hh:mm:ss");
-                            SimpleDateFormat format2 = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
+                            SimpleDateFormat format2 = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
                             Date itemDamagedDate = null;
                             try {
                                 itemDamagedDate = format2.parse(itemDamagedRecordList.get(index).getDamagedItemDate().toString());
                             } catch (ParseException e) {
                                 LOG.error("format string to Date " + e);
                             }
-                            damagedRecord.setDamagedItemDate(format1.format(itemDamagedDate).toString());
+                            damagedRecord.setDamagedItemDate(df.format(itemDamagedDate).toString());
                         }
                         damagedRecord.setDamagedItemNote(itemDamagedRecordList.get(index).getDamagedItemNote());
                         damagedRecord.setPatronBarcode(itemDamagedRecordList.get(index).getPatronBarcode());
@@ -1019,8 +1037,8 @@ public class WorkItemOlemlEditor extends AbstractEditor {
                         claimsReturnedRecord.setItemId(itemData.getItemIdentifier());
                     } else {
                         if (claimsReturnedRecordList.get(index).getClaimsReturnedFlagCreateDate().toString() != null) {
-                            SimpleDateFormat format1 = new SimpleDateFormat("MM/dd/yyyy hh:mm:ss");
-                            SimpleDateFormat format2 = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
+                            SimpleDateFormat format1 = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss");
+                            SimpleDateFormat format2 = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
                             Date claimsReturnedDate = null;
                             try {
                                 claimsReturnedDate = format2.parse(claimsReturnedRecordList.get(index).getClaimsReturnedFlagCreateDate().toString());
@@ -1461,10 +1479,11 @@ public class WorkItemOlemlEditor extends AbstractEditor {
         SimpleDateFormat sdf = new SimpleDateFormat(RiceConstants.SIMPLE_DATE_FORMAT_FOR_DATE+" HH:mm:ss");
         String dateStr = sdf.format(date);
         String user = GlobalVariables.getUserSession().getLoggedInUserPrincipalName();
-        String docId = editorForm.getDocId();
-        String instanceId = editorForm.getInstanceId();
+        String principalName = GlobalVariables.getUserSession().getPrincipalName();
+        //String docId = editorForm.getDocId();
+        //String instanceId = editorForm.getInstanceId();
         String editorMessage = "";
-        Bib bib = null;
+        //Bib bib = null;
         editorForm.setHeaderText("Global Edit - Item");
 
         try {
@@ -1483,6 +1502,7 @@ public class WorkItemOlemlEditor extends AbstractEditor {
             itemDoc.setFormat(DocFormat.OLEML.getCode());
             itemDoc.setCreatedOn(dateStr);
             itemDoc.setCreatedBy(user);
+            itemDoc.setUpdatedBy(principalName);
             String canUpdateStaffOnlyFlag = "false";
             if (editorForm.isStaffOnlyFlagInGlobalEdit()) {
                 canUpdateStaffOnlyFlag = "true";
@@ -1574,6 +1594,14 @@ public class WorkItemOlemlEditor extends AbstractEditor {
         GlobalVariables.getMessageMap().putInfo(KRADConstants.GLOBAL_INFO, OLEConstants.MARC_EDITOR_ITEM_COPY_MESSAGE);
         return editorForm;
     }
+
+    public OleLoanDocumentDaoOjb getLoanDaoOjb() {
+        if (null == loanDaoOjb) {
+            loanDaoOjb = (OleLoanDocumentDaoOjb) SpringContext.getBean("oleLoanDao");
+        }
+        return loanDaoOjb;
+    }
+
 
     public DateTimeService getDateTimeService() {
         return (DateTimeService)SpringContext.getService("dateTimeService");

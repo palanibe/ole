@@ -157,6 +157,17 @@ public class OlePatronMaintenanceDocumentController extends MaintenanceDocumentC
         olePatronDocument.setShowLoanedRecords(false);
         olePatronDocument.setShowRequestedItems(false);
         olePatronDocument.setShowTemporaryCirculationHistoryRecords(false);
+        olePatronDocument.setShowBillUrlsFlag(true);
+        String createBillUrl = OLEConstants.OlePatron.PATRON_CREATE_BILL_URL + patronDocument.getOlePatronId() + "&firstName=" + patronDocument.getName().getFirstName() + "&lastName=" + patronDocument.getName().getLastName();
+        patronDocument.setCreateBillUrl(createBillUrl);
+        if (CollectionUtils.isNotEmpty(patronDocument.getPatronBillPayments())) {
+            patronDocument.setPatronBillFileName(OLEConstants.OlePatron.PATRON_VIEW_BILLS);
+            patronDocument.setViewBillUrl(OLEConstants.OlePatron.PATRON_VIEW_BILL_URL + patronDocument.getOlePatronId());
+        }if(patronDocument.getOlePatronUserNotes().size()>0){
+            patronDocument.setUserNoteExists(true);
+        }if(patronDocument.isGeneralBlock()){
+            patronDocument.setGeneralBlockPatrn(patronDocument.isGeneralBlock());
+        }
         return getUIFModelAndView(form);
     }
 

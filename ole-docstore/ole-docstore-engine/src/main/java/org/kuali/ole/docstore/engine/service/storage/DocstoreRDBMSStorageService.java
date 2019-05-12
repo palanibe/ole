@@ -70,6 +70,10 @@ public class DocstoreRDBMSStorageService implements DocstoreStorageService {
         for (Item item : holdingsTree.getItems()) {
             Holdings holdings = new PHoldings();
             holdings.setId(holdingsTree.getHoldings().getId());
+            holdings.setCreatedBy(holdingsTree.getHoldings().getCreatedBy());
+            if(holdingsTree.getHoldings().isStaffOnly()){
+                item.setStaffOnly(holdingsTree.getHoldings().isStaffOnly());
+            }
             item.setHolding(holdings);
             createItem(item);
         }
@@ -623,6 +627,36 @@ public class DocstoreRDBMSStorageService implements DocstoreStorageService {
         RdbmsHoldingsDocumentManager rdbmsHoldingsDocumentManager = RdbmsHoldingsDocumentManager.getInstance();
         rdbmsHoldingsDocumentManager.unbindWithAllBibs(holdingsIds, bibId);
     }
+
+    @Override
+    public void saveDeletedBibs(List<Bib> bibs) throws Exception {
+        try{
+            RdbmsBibDocumentManager documentManager = RdbmsBibDocumentManager.getInstance();
+            LOG.info("Started to save deleted Bibs");
+            documentManager.saveDeletedBibs(bibs);
+            LOG.info("Finished Saving deleted Bibs");
+        }catch (Exception e){
+            e.printStackTrace();
+            throw e;
+        }
+    }
+
+    @Override
+    public void saveDeletedHolding(Holdings holding){
+        RdbmsBibDocumentManager documentManager = RdbmsBibDocumentManager.getInstance();
+        LOG.info("Started to save deleted Bibs");
+        documentManager.saveDeletedHolding(holding);
+        LOG.info("Finished Saving deleted Bibs");
+    }
+
+    @Override
+    public void saveDeletedItem(Item item) {
+        RdbmsBibDocumentManager documentManager = RdbmsBibDocumentManager.getInstance();
+        LOG.info("Started to save deleted Bibs");
+        documentManager.saveDeletedItem(item);
+        LOG.info("Finished Saving deleted Bibs");
+    }
+
 
 }
 

@@ -66,14 +66,33 @@ public class OleNoticeBo extends PersistableBusinessObjectBase  implements Clone
     private String copyNumber;
     private String billNumber;
     private String feeType;
-    private BigDecimal feeAmount;
+    private String feeAmount;
     private String itemInstitution;
     private String itemCampus;
     private String itemCollection;
     private String itemLibrary;
     private String itemLocation;
+    private String itemTypeDesc;
     private String missingPieceNote;
     private String itemCallNumberPrefix;
+    private int claimsSearchCount;
+    private String fineItemDueDate;
+
+    public String getFineItemDueDate() {
+        return fineItemDueDate;
+    }
+
+    public void setFineItemDueDate(String fineItemDueDate) {
+        this.fineItemDueDate = fineItemDueDate;
+    }
+
+    public int getClaimsSearchCount() {
+        return claimsSearchCount;
+    }
+
+    public void setClaimsSearchCount(int claimsSearchCount) {
+        this.claimsSearchCount = claimsSearchCount;
+    }
 
     public String getNoticeType() {
         return noticeType;
@@ -376,7 +395,7 @@ public class OleNoticeBo extends PersistableBusinessObjectBase  implements Clone
         this.feeType = feeType;
     }
 
-    public void setFeeAmount(BigDecimal feeAmount) {
+    public void setFeeAmount(String feeAmount) {
         this.feeAmount = feeAmount;
     }
 
@@ -388,7 +407,7 @@ public class OleNoticeBo extends PersistableBusinessObjectBase  implements Clone
         return feeType;
     }
 
-    public BigDecimal getFeeAmount() {
+    public String getFeeAmount() {
         return feeAmount;
     }
 
@@ -438,6 +457,14 @@ public class OleNoticeBo extends PersistableBusinessObjectBase  implements Clone
 
     public void setItemLocation(String itemLocation) {
         this.itemLocation = itemLocation;
+    }
+
+    public String getItemTypeDesc() {
+        return itemTypeDesc;
+    }
+
+    public void setItemTypeDesc(String itemTypeDesc) {
+        this.itemTypeDesc = itemTypeDesc;
     }
 
     public String getMissingPieceNote() {

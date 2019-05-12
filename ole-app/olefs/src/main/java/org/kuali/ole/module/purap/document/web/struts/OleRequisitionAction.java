@@ -61,6 +61,7 @@ import org.kuali.ole.sys.businessobject.AccountingLineBase;
 import org.kuali.ole.sys.businessobject.SourceAccountingLine;
 import org.kuali.ole.sys.context.SpringContext;
 import org.kuali.ole.sys.document.validation.event.AddAccountingLineEvent;
+import org.kuali.ole.sys.service.UniversityDateService;
 import org.kuali.ole.vnd.VendorConstants;
 import org.kuali.ole.vnd.businessobject.*;
 import org.kuali.ole.vnd.document.service.VendorService;
@@ -230,7 +231,7 @@ public class OleRequisitionAction extends RequisitionAction {
                         OleExchangeRate tempOleExchangeRate = null;
                         if (iterator.hasNext()) {
                             tempOleExchangeRate = (OleExchangeRate) iterator.next();
-                            items.setItemExchangeRate(new KualiDecimal(tempOleExchangeRate.getExchangeRate()));
+                            items.setItemExchangeRate(tempOleExchangeRate.getExchangeRate());
                         }
                         if (items.getItemExchangeRate() != null && items.getItemForeignUnitCost() != null) {
                             items.setItemUnitCostUSD(new KualiDecimal(items.getItemForeignUnitCost().bigDecimalValue().divide(tempOleExchangeRate.getExchangeRate(), 4, RoundingMode.HALF_UP)));
@@ -271,7 +272,7 @@ public class OleRequisitionAction extends RequisitionAction {
                 notificationOption = account.getNotificationOption();
             }
             if (notificationOption != null && notificationOption.equals(OLEPropertyConstants.BLOCK_USE)) {
-                sufficientFundCheck = oleRequisitionDocumentService.hasSufficientFundsOnRequisition(accLine);
+                sufficientFundCheck = oleRequisitionDocumentService.hasSufficientFundsOnRequisition(accLine, notificationOption, SpringContext.getBean(UniversityDateService.class).getCurrentFiscalYear());
                 if (sufficientFundCheck) {
                     GlobalVariables.getMessageMap().putError(
                             OLEConstants.SufficientFundCheck.ERROR_MSG_FOR_INSUFF_FUND, RiceKeyConstants.ERROR_CUSTOM,
@@ -347,7 +348,7 @@ public class OleRequisitionAction extends RequisitionAction {
                 OleExchangeRate tempOleExchangeRate = null;
                 if (iterator.hasNext()) {
                     tempOleExchangeRate = (OleExchangeRate) iterator.next();
-                    item.setItemExchangeRate(new KualiDecimal(tempOleExchangeRate.getExchangeRate()));
+                    item.setItemExchangeRate(tempOleExchangeRate.getExchangeRate());
                 }
                 if (item.getItemExchangeRate() != null && item.getItemForeignUnitCost() != null) {
                     item.setItemUnitCostUSD(new KualiDecimal(item.getItemForeignUnitCost().bigDecimalValue().divide(tempOleExchangeRate.getExchangeRate(), 4, RoundingMode.HALF_UP)));
@@ -511,13 +512,14 @@ public class OleRequisitionAction extends RequisitionAction {
             LOG.info("Currency Type on Requisition :" + document.getVendorDetail().getCurrencyType());
         }
         if (document.getVendorDetail() != null) {
+            boolean activePreferredFound = false;
             if (document.getVendorDetail().getVendorTransmissionFormat().size() > 0) {
                 List<VendorTransmissionFormatDetail> vendorTransmissionFormat = document.getVendorDetail().getVendorTransmissionFormat();
                 for (VendorTransmissionFormatDetail iter : vendorTransmissionFormat) {
-                    if (iter.isVendorPreferredTransmissionFormat()) {
+                    if (iter.isVendorPreferredTransmissionFormat() && iter.isActive()) {
                         if (iter.getVendorTransmissionFormat().getVendorTransmissionFormat() != null) {
-                            if (iter.getVendorTransmissionFormat().getVendorTransmissionFormat().equalsIgnoreCase(OleSelectConstant.VENDOR_TRANSMISSION_FORMAT_EDI) ||
-                                    iter.getVendorTransmissionFormat().getVendorTransmissionFormat().equalsIgnoreCase(OleSelectConstant.VENDOR_TRANSMISSION_FORMAT_PDF)) {
+                            activePreferredFound = true;
+                            if (iter.getVendorTransmissionFormat().getVendorTransmissionFormat().equalsIgnoreCase(OleSelectConstant.VENDOR_TRANSMISSION_FORMAT_EDI)) {
                                 document.setPurchaseOrderTransmissionMethodCode(OleSelectConstant.METHOD_OF_PO_TRANSMISSION_NOPR);
                             } else {
                                 document.setPurchaseOrderTransmissionMethodCode(SpringContext.getBean(ParameterService.class).getParameterValueAsString(RequisitionDocument.class, PurapParameterConstants.PURAP_DEFAULT_PO_TRANSMISSION_CODE));
@@ -525,7 +527,8 @@ public class OleRequisitionAction extends RequisitionAction {
                         }
                     }
                 }
-            } else {
+            }
+            if (!activePreferredFound){
                 document.setPurchaseOrderTransmissionMethodCode(SpringContext.getBean(ParameterService.class).getParameterValueAsString(RequisitionDocument.class, PurapParameterConstants.PURAP_DEFAULT_PO_TRANSMISSION_CODE));
             }
             boolean foreignCurrencyIndicator = isForeignCurrency(document.getVendorDetail().getCurrencyType());
@@ -540,7 +543,7 @@ public class OleRequisitionAction extends RequisitionAction {
                         Iterator iterator = exchangeRateList.iterator();
                         if (iterator.hasNext()) {
                             OleExchangeRate tempOleExchangeRate = (OleExchangeRate) iterator.next();
-                            item.setItemExchangeRate(new KualiDecimal(tempOleExchangeRate.getExchangeRate()));
+                            item.setItemExchangeRate(tempOleExchangeRate.getExchangeRate());
                         }
                     }
                 }
@@ -1170,7 +1173,7 @@ public class OleRequisitionAction extends RequisitionAction {
             }
             if (notificationOption != null
                     && (notificationOption.equals(OLEPropertyConstants.BUD_REVIEW))) {
-                sufficientFundCheck = oleRequisitionDocumentService.hasSufficientFundsOnBlanketApproveRequisition(accLine);
+                sufficientFundCheck = oleRequisitionDocumentService.hasSufficientFundsOnBlanketApproveRequisition(accLine,notificationOption,SpringContext.getBean(UniversityDateService.class).getCurrentFiscalYear());
                 if (sufficientFundCheck) {
                     return sufficientFundCheck;
                 }

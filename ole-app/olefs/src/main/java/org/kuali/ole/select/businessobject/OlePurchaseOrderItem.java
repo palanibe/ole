@@ -76,7 +76,7 @@ public class OlePurchaseOrderItem extends PurchaseOrderItem implements OlePurcha
     protected String itemForeignDiscountType;
     protected KualiDecimal itemForeignDiscountAmt;
     protected KualiDecimal itemForeignUnitCost;
-    protected KualiDecimal itemExchangeRate;
+    protected BigDecimal itemExchangeRate;
     protected KualiDecimal itemUnitCostUSD;
     protected boolean latestExchangeRate;
     protected Integer categoryId;
@@ -126,7 +126,7 @@ public class OlePurchaseOrderItem extends PurchaseOrderItem implements OlePurcha
 
     //For Displaying the Invoice List
     private List<OleInvoiceDocument> invoiceDocuments = new ArrayList<OleInvoiceDocument>();
-    private List<InvoiceView> paymentHistoryInvoiceViews = null;
+  //  private List<InvoiceView> paymentHistoryInvoiceViews = null;
     //For Invoice
     private String invoiceItemListPrice;
     private String invoiceForeignItemListPrice;
@@ -672,6 +672,13 @@ public class OlePurchaseOrderItem extends PurchaseOrderItem implements OlePurcha
             }
             this.setNotes(notes);
         }
+        if(ri.getRequisition()!=null) {
+            if (ri.getRequisition().getPurapDocumentIdentifier() != null) {
+                for (OleCopy olecopy : ri.getCopyList()) {
+                    olecopy.setReqDocNum(ri.getRequisition().getPurapDocumentIdentifier());
+                }
+            }
+        }
         this.setCopyList(ri.getCopyList());
         // By default, set the item active indicator to true.
         // In amendment, the user can set it to false when they click on
@@ -883,11 +890,11 @@ public class OlePurchaseOrderItem extends PurchaseOrderItem implements OlePurcha
         this.itemForeignUnitCost = itemForeignUnitCost;
     }
 
-    public KualiDecimal getItemExchangeRate() {
+    public BigDecimal getItemExchangeRate() {
         return itemExchangeRate;
     }
 
-    public void setItemExchangeRate(KualiDecimal itemExchangeRate) {
+    public void setItemExchangeRate(BigDecimal itemExchangeRate) {
         this.itemExchangeRate = itemExchangeRate;
     }
 
@@ -1605,7 +1612,7 @@ public class OlePurchaseOrderItem extends PurchaseOrderItem implements OlePurcha
      * This method returns the Invoice History for the given Item
      * @return paymentHistoryInvoiceViews
      */
-    public List<InvoiceView> getPaymentHistoryInvoiceViews() {
+    /*public List<InvoiceView> getPaymentHistoryInvoiceViews() {
         if (this.getPurapDocument() != null && ((OlePurchaseOrderDocument)this.getPurapDocument()).getRelatedViews() != null) {
             paymentHistoryInvoiceViews = ((OlePurchaseOrderDocument)this.getPurapDocument()).getRelatedViews().updateRelatedView
                     (InvoiceView.class, paymentHistoryInvoiceViews, false);
@@ -1613,14 +1620,14 @@ public class OlePurchaseOrderItem extends PurchaseOrderItem implements OlePurcha
 
         return paymentHistoryInvoiceViews;
     }
-
+*/
     /**
      * This method sets the Invoice History for the Given Items
      * @param paymentHistoryInvoiceViews
      */
-    public void setPaymentHistoryInvoiceViews(List<InvoiceView> paymentHistoryInvoiceViews) {
+   /* public void setPaymentHistoryInvoiceViews(List<InvoiceView> paymentHistoryInvoiceViews) {
         this.paymentHistoryInvoiceViews = paymentHistoryInvoiceViews;
-    }
+    }*/
 
     public List<OleInvoiceDocument> getInvoiceDocuments() {
         return invoiceDocuments;

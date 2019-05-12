@@ -840,7 +840,7 @@ public class DocstoreSolrSearchService implements DocstoreSearchService, Docstor
         StringBuffer addDocType = new StringBuffer();
         if (searchConditions != null && searchConditions.size() > 0) {
             for (SearchCondition searchCondition : searchConditions) {
-                if (searchCondition.getSearchField() != null && searchCondition.getSearchField().getDocType() != null) {
+                if (searchCondition.getSearchField() != null && StringUtils.isNotBlank(searchCondition.getSearchField().getDocType())) {
                     addDocType.append("(DocType:");
                     addDocType.append(searchCondition.getSearchField().getDocType());
                     addDocType.append(")");
@@ -868,6 +868,9 @@ public class DocstoreSolrSearchService implements DocstoreSearchService, Docstor
                 }
                 searchCondition = searchConditions.get(i);
                 searchText = searchCondition.getSearchField().getFieldValue();
+                if(searchFieldsMap.get(Bib.AUTHOR).equalsIgnoreCase(searchCondition.getSearchField().getFieldName())){
+                    searchText = searchText.replaceAll("-"," ");
+                }
                 searchScope = searchCondition.getSearchScope();
                 if (StringUtils.isNotEmpty(searchCondition.getOperator()) && searchCondition.getOperator().equalsIgnoreCase("NOT")) {
                     previousOperator = searchCondition.getOperator();
@@ -902,7 +905,7 @@ public class DocstoreSolrSearchService implements DocstoreSearchService, Docstor
                         if (searchScope.equalsIgnoreCase("AND")) {
                             searchTextVal = searchTextVal.trim().replaceAll("\\s+", "+ AND +");
                         } else if (searchScope.equalsIgnoreCase("OR")) {
-                            searchTextVal = searchTextVal.trim().replaceAll("\\s+", "+ OR +");
+                            searchTextVal = searchTextVal.trim().replaceAll("\\s+", "+OR+");
                         } else if (searchScope.equalsIgnoreCase("phrase")) {
                             searchTextVal = "\"" + searchText + "\"";
                         } else if (searchScope.equalsIgnoreCase("none")) {
@@ -1101,7 +1104,7 @@ public class DocstoreSolrSearchService implements DocstoreSearchService, Docstor
     private String getModifiedText(String searchText) {
         StringBuffer modifiedText = new StringBuffer();
         boolean isHashReplaced=true;
-        if(searchText.contains(DocumentUniqueIDPrefix.PREFIX_WORK_BIB_MARC) || searchText.contains(DocumentUniqueIDPrefix.PREFIX_WORK_HOLDINGS_OLEML) || searchText.contains(DocumentUniqueIDPrefix.PREFIX_WORK_ITEM_OLEML) ){
+        if(searchText.contains(DocumentUniqueIDPrefix.PREFIX_WORK_BIB_MARC) || searchText.contains(DocumentUniqueIDPrefix.PREFIX_WORK_HOLDINGS_OLEML) || searchText.contains(DocumentUniqueIDPrefix.PREFIX_WORK_ITEM_OLEML)  || searchText.equalsIgnoreCase("RECENTLY-RETURNED")){
             isHashReplaced=false;
         }
         StringCharacterIterator stringCharacterIterator = new StringCharacterIterator(searchText);

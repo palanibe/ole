@@ -28,9 +28,11 @@ import org.kuali.ole.module.purap.businessobject.PurchaseOrderItem;
 import org.kuali.ole.module.purap.document.PurchaseOrderDocument;
 import org.kuali.ole.module.purap.document.dataaccess.PurchaseOrderDao;
 import org.kuali.ole.sys.OLEPropertyConstants;
+import org.kuali.ole.sys.context.SpringContext;
 import org.kuali.rice.core.api.config.property.ConfigContext;
 import org.kuali.rice.core.api.util.type.KualiDecimal;
 import org.kuali.rice.core.framework.persistence.ojb.dao.PlatformAwareDaoBaseOjb;
+import org.kuali.rice.coreservice.framework.parameter.ParameterService;
 import org.kuali.rice.kew.actionitem.ActionItem;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,6 +48,7 @@ import java.util.List;
 @Transactional
 public class PurchaseOrderDaoOjb extends PlatformAwareDaoBaseOjb implements PurchaseOrderDao {
     private static org.apache.log4j.Logger LOG = org.apache.log4j.Logger.getLogger(PurchaseOrderDaoOjb.class);
+    protected ParameterService parameterService;
 
     public Integer getPurchaseOrderIdForCurrentPurchaseOrderByRelatedDocId(Integer accountsPayablePurchasingDocumentLinkIdentifier) {
         Criteria criteria = new Criteria();
@@ -58,6 +61,31 @@ public class PurchaseOrderDaoOjb extends PlatformAwareDaoBaseOjb implements Purc
             return purchaseOrderDocument.getPurapDocumentIdentifier();
         }
 
+        return null;
+    }
+
+    public List<PurchaseOrderDocument> getPurchaseOrderIdByRelatedDocId(Integer accountsPayablePurchasingDocumentLinkIdentifier) {
+        Criteria criteria = new Criteria();
+        criteria.addEqualTo("accountsPayablePurchasingDocumentLinkIdentifier", accountsPayablePurchasingDocumentLinkIdentifier);
+
+        List<PurchaseOrderDocument> poList = (List<PurchaseOrderDocument>) getPersistenceBrokerTemplate().getCollectionByQuery(new QueryByCriteria(PurchaseOrderDocument.class, criteria));
+       if(poList.size() > 0) {
+           return poList;
+       }
+
+        return null;
+    }
+
+
+    public List<PurchaseOrderDocument> getCurrentPurchaseOrderListByRelatedDocId(Integer accountsPayablePurchasingDocumentLinkIdentifier) {
+        Criteria criteria = new Criteria();
+        criteria.addEqualTo("accountsPayablePurchasingDocumentLinkIdentifier", accountsPayablePurchasingDocumentLinkIdentifier);
+        criteria.addEqualTo(PurapPropertyConstants.PURCHASE_ORDER_CURRENT_INDICATOR, "Y");
+
+        List<PurchaseOrderDocument> poList = (List<PurchaseOrderDocument>) getPersistenceBrokerTemplate().getCollectionByQuery(new QueryByCriteria(PurchaseOrderDocument.class, criteria));
+        if(poList.size() > 0) {
+            return poList;
+        }
         return null;
     }
 
@@ -191,7 +219,10 @@ public class PurchaseOrderDaoOjb extends PlatformAwareDaoBaseOjb implements Purc
         LOG.debug("getAllOpenPurchaseOrders() started");
         Criteria criteria = new Criteria();
         criteria.addIsNull(PurapPropertyConstants.RECURRING_PAYMENT_TYPE_CODE);
-        criteria.addEqualTo(PurapPropertyConstants.TOTAL_ENCUMBRANCE, new KualiDecimal(0));
+        Boolean encumb_check = parameterService.getParameterValueAsBoolean(PurapConstants.PURAP_NAMESPACE, "All", OLEConstants.ZERO_ENCUMBRANCE_CHECK, Boolean.FALSE);
+        if(encumb_check) {
+            criteria.addEqualTo(PurapPropertyConstants.TOTAL_ENCUMBRANCE, new KualiDecimal(0));
+        }
         criteria.addEqualTo(PurapPropertyConstants.PURCHASE_ORDER_CURRENT_INDICATOR, true);
         for (String excludeCode : excludedVendorChoiceCodes) {
             criteria.addNotEqualTo(PurapPropertyConstants.VENDOR_CHOICE_CODE, excludeCode);
@@ -206,16 +237,23 @@ public class PurchaseOrderDaoOjb extends PlatformAwareDaoBaseOjb implements Purc
     }
 
     /**
-     * @see org.kuali.ole.module.purap.document.dataaccess.PurchaseOrderDao#getAllOpenPurchaseOrders(java.util.List,java.sql.Date,java.sql.Date)
+     * @see org.kuali.ole.module.purap.document.dataaccess.PurchaseOrderDao#getAllOpenPurchaseOrders(java.util.List,java.sql.Date,java.sql.Date,java.util.Collection)
      */
-    public List<AutoClosePurchaseOrderView> getAllOpenPurchaseOrders(List<String> excludedVendorChoiceCodes, java.sql.Date poCloseFromDate,Date poCloseToDate) {
+    public List<AutoClosePurchaseOrderView> getAllOpenPurchaseOrders(List<String> excludedVendorChoiceCodes, java.sql.Date poCloseFromDate,Date poCloseToDate, Collection<String> orderTypeString) {
         LOG.debug("getAllOpenPurchaseOrders() started");
         Criteria criteria = new Criteria();
         criteria.addIsNull(PurapPropertyConstants.RECURRING_PAYMENT_TYPE_CODE);
-        criteria.addEqualTo(PurapPropertyConstants.TOTAL_ENCUMBRANCE, new KualiDecimal(0));
+        Boolean encumb_check = getParameterService().getParameterValueAsBoolean(PurapConstants.PURAP_NAMESPACE, "All", OLEConstants.ZERO_ENCUMBRANCE_CHECK, Boolean.FALSE);
+        if(encumb_check) {
+            criteria.addEqualTo(PurapPropertyConstants.TOTAL_ENCUMBRANCE, new KualiDecimal(0));
+        }
         criteria.addEqualTo(PurapPropertyConstants.PURCHASE_ORDER_CURRENT_INDICATOR, true);
         criteria.addEqualTo(PurapPropertyConstants.APP_DOC_STAT, PurapConstants.PurchaseOrderStatuses.APPDOC_OPEN);
-        criteria.addGreaterThan(PurapPropertyConstants.TOTAL_AMOUNT, new KualiDecimal(0));
+        criteria.addGreaterOrEqualThan(PurapPropertyConstants.TOTAL_AMOUNT, new KualiDecimal(0));
+        criteria.addGreaterThan(PurapPropertyConstants.INVOICED_QTY, new KualiDecimal(0));
+        if(orderTypeString != null) {
+            criteria.addIn(PurapPropertyConstants.PO_TYPE, orderTypeString);
+        }
         String dbVendor = getProperty("db.vendor");
         if (dbVendor.equals("mysql")) {
             if (poCloseFromDate != null) {
@@ -248,6 +286,7 @@ public class PurchaseOrderDaoOjb extends PlatformAwareDaoBaseOjb implements Purc
         if (LOG.isDebugEnabled()) {
             LOG.debug("getAllOpenPurchaseOrders() Query criteria is " + criteria.toString());
         }
+        System.out.println("query criteria  >>>>" + qbc);
         List<AutoClosePurchaseOrderView> l = (List<AutoClosePurchaseOrderView>) getPersistenceBrokerTemplate().getCollectionByQuery(qbc);
         LOG.debug("getAllOpenPurchaseOrders() ended.");
         return l;
@@ -301,5 +340,17 @@ public class PurchaseOrderDaoOjb extends PlatformAwareDaoBaseOjb implements Purc
         criteria.addEqualTo(PurapPropertyConstants.DOC_HDR_ID, documentNumber);
         getPersistenceBrokerTemplate().deleteByQuery(new QueryByCriteria(ActionItem.class, criteria));
         getPersistenceBrokerTemplate().clearCache();
+    }
+
+    public void setParameterService(ParameterService parameterService)
+    {
+        this.parameterService = parameterService;
+    }
+
+    public ParameterService getParameterService() {
+        if (null == parameterService){
+            parameterService = (ParameterService) SpringContext.getBean("parameterService");
+        }
+        return parameterService;
     }
 }

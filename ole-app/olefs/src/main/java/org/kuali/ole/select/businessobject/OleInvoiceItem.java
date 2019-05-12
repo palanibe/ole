@@ -30,7 +30,6 @@ import org.kuali.ole.module.purap.document.service.OlePurapService;
 import org.kuali.ole.module.purap.document.service.PurapService;
 import org.kuali.ole.module.purap.exception.PurError;
 import org.kuali.ole.module.purap.util.ExpiredOrClosedAccountEntry;
-import org.kuali.ole.module.purap.util.PurApRelatedViews;
 import org.kuali.ole.pojo.OleOrderRecord;
 import org.kuali.ole.select.OleSelectConstant;
 import org.kuali.ole.select.bo.OLELinkPurapDonor;
@@ -66,7 +65,7 @@ public class OleInvoiceItem extends InvoiceItem {
     protected String itemForeignDiscountType;
     protected KualiDecimal itemForeignDiscountAmt;
     protected KualiDecimal itemForeignUnitCost;
-    protected KualiDecimal itemExchangeRate;
+    protected BigDecimal itemExchangeRate;
     protected KualiDecimal itemUnitCostUSD;
     protected KualiDecimal foreignCurrencyExtendedPrice;
 
@@ -91,8 +90,8 @@ public class OleInvoiceItem extends InvoiceItem {
     protected List<OleInvoiceNote> notes;
     protected Integer poItemIdentifier;
 
-    private Boolean relatedViewExist;
-    private transient PurApRelatedViews relatedViews;
+   // private Boolean relatedViewExist;
+   // private transient PurApRelatedViews relatedViews;
     private UnitOfMeasure itemUnitOfMeasure;
 
     private String vendorItemIdentifier;
@@ -147,6 +146,7 @@ public class OleInvoiceItem extends InvoiceItem {
 
     private BibInfoRecord bibInfoRecord;
     private String fundCode;
+    private String subscriptionPeriod;
 
     public BibInfoRecord getBibInfoRecord() {
         return bibInfoRecord;
@@ -317,7 +317,7 @@ public class OleInvoiceItem extends InvoiceItem {
         this.setItemForeignDiscountAmt(olePoi.getItemForeignDiscountAmt());
         this.setItemCurrencyType(olePoi.getInvoiceForeignCurrency() != null ? olePoi.getInvoiceForeignCurrency() : olePoi.getItemCurrencyType());
         this.setInvoicedCurrency(olePoi.getInvoiceForeignCurrency() != null ? olePoi.getInvoiceForeignCurrency() : olePoi.getItemCurrencyType());
-        this.setItemExchangeRate(olePoi.getInvoiceExchangeRate() != null ? new KualiDecimal(olePoi.getInvoiceExchangeRate()) : new KualiDecimal(0.00));
+        this.setItemExchangeRate(olePoi.getInvoiceExchangeRate() != null ? new BigDecimal(olePoi.getInvoiceExchangeRate()) : new BigDecimal(0.00));
         this.setExchangeRate(olePoi.getInvoiceExchangeRate() != null ? olePoi.getInvoiceExchangeRate() : null);
         this.setItemUnitCostUSD(olePoi.getItemUnitCostUSD());
         this.setFormatTypeId(olePoi.getFormatTypeId());
@@ -400,7 +400,7 @@ public class OleInvoiceItem extends InvoiceItem {
         this.setItemTitleId(olePoi.getItemTitleId());
         this.setItemCurrencyType(olePoi.getInvoiceForeignCurrency()!=null ? olePoi.getInvoiceForeignCurrency() : olePoi.getItemCurrencyType());
         this.setInvoicedCurrency(olePoi.getInvoiceForeignCurrency()!=null? olePoi.getInvoiceForeignCurrency() : olePoi.getItemCurrencyType());
-        this.setItemExchangeRate(olePoi.getInvoiceExchangeRate()!= null ? new KualiDecimal(olePoi.getInvoiceExchangeRate()) : new KualiDecimal(0.00));
+        this.setItemExchangeRate(olePoi.getInvoiceExchangeRate()!= null ? new BigDecimal(olePoi.getInvoiceExchangeRate()) : new BigDecimal(0.00));
         this.setExchangeRate(olePoi.getInvoiceExchangeRate()!= null? olePoi.getInvoiceExchangeRate() : null);
         this.setItemUnitCostUSD(olePoi.getItemUnitCostUSD());
         this.setOleDonors(olePoi.getOleDonors());
@@ -609,11 +609,11 @@ public class OleInvoiceItem extends InvoiceItem {
         }
     }
 
-    public KualiDecimal getItemExchangeRate() {
+    public BigDecimal getItemExchangeRate() {
         return itemExchangeRate;
     }
 
-    public void setItemExchangeRate(KualiDecimal itemExchangeRate) {
+    public void setItemExchangeRate(BigDecimal itemExchangeRate) {
         this.itemExchangeRate = itemExchangeRate;
     }
 
@@ -869,7 +869,7 @@ public class OleInvoiceItem extends InvoiceItem {
         this.formatType = formatType;
     }
 
-    public PurApRelatedViews getRelatedViews() {
+   /* public PurApRelatedViews getRelatedViews() {
         if (relatedViews == null) {
             relatedViews = new PurApRelatedViews(
                     this.getInvoiceDocument() != null ? this.getInvoiceDocument().getDocumentNumber()
@@ -878,24 +878,24 @@ public class OleInvoiceItem extends InvoiceItem {
                             this.getAccountsPayablePurchasingDocumentLinkIdentifier() : null);
         }
         return relatedViews;
-    }
+    }*/
 
-    public void setRelatedViews(PurApRelatedViews relatedViews) {
+   /* public void setRelatedViews(PurApRelatedViews relatedViews) {
         this.relatedViews = relatedViews;
-    }
+    }*/
 
-    public Boolean getRelatedViewExist() {
+   /* public Boolean getRelatedViewExist() {
         if (this.relatedViews != null) {
             this.relatedViewExist = Boolean.TRUE;
         } else {
             this.relatedViewExist = Boolean.FALSE;
         }
         return relatedViewExist;
-    }
+    }*/
 
-    public void setRelatedViewExist(Boolean relatedViewExist) {
+    /*public void setRelatedViewExist(Boolean relatedViewExist) {
         this.relatedViewExist = relatedViewExist;
-    }
+    }*/
 
     public boolean isDebitItem() {
         return debitItem;
@@ -1343,5 +1343,13 @@ public class OleInvoiceItem extends InvoiceItem {
 
     public void setItemExtendedPrice(BigDecimal itemExtendedPrice) {
         this.itemExtendedPrice = itemExtendedPrice;
+    }
+
+    public String getSubscriptionPeriod() {
+        return subscriptionPeriod;
+    }
+
+    public void setSubscriptionPeriod(String subscriptionPeriod) {
+        this.subscriptionPeriod = subscriptionPeriod;
     }
 }

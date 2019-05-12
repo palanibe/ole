@@ -207,6 +207,7 @@ public class OlePaymentRequestServiceImpl extends PaymentRequestServiceImpl impl
         LOG.debug("Inside spawnPoAmendmentForUnorderedItems");
         if (paymentDocument instanceof OlePaymentRequestDocument) {
             OlePaymentRequestDocument rlDoc = paymentDocument;
+            final PurchaseOrderDocument currentDocument = po;
 
             //if a new item has been added spawn a purchase order amendment
             if (hasNewUnorderedItem(paymentDocument)) {
@@ -220,7 +221,7 @@ public class OlePaymentRequestServiceImpl extends PaymentRequestServiceImpl impl
                             String poDocNumber = (String) objects[1];
 
                             //create a PO amendment
-                            PurchaseOrderAmendmentDocument amendmentPo = (PurchaseOrderAmendmentDocument) purchaseOrderService.createAndSavePotentialChangeDocument(poDocNumber, PurchaseOrderDocTypes.PURCHASE_ORDER_AMENDMENT_DOCUMENT, PurchaseOrderStatuses.APPDOC_AMENDMENT);
+                            PurchaseOrderAmendmentDocument amendmentPo = (PurchaseOrderAmendmentDocument) purchaseOrderService.createAndSavePotentialChangeDocument(currentDocument, PurchaseOrderDocTypes.PURCHASE_ORDER_AMENDMENT_DOCUMENT, PurchaseOrderStatuses.APPDOC_AMENDMENT);
 
                             //add new lines to amendement
                             addUnorderedItemsToAmendment(amendmentPo, rlDoc);
@@ -457,7 +458,7 @@ public class OlePaymentRequestServiceImpl extends PaymentRequestServiceImpl impl
 
         distributeAccounting(paymentRequest);
 
-        purapService.calculateTax(paymentRequest);
+        calculateTax(paymentRequest);
 
         // do proration for full order and trade in
         purapService.prorateForTradeInAndFullOrderDiscount(paymentRequest);
@@ -468,6 +469,13 @@ public class OlePaymentRequestServiceImpl extends PaymentRequestServiceImpl impl
         }
 
         distributeAccounting(paymentRequest);
+    }
+
+    public void calculateTax(PaymentRequestDocument purapDocument) {
+        PurchaseOrderDocument pDoc = purapDocument.getPurchaseOrderDocument();
+        String deliveryState = pDoc.getDeliveryStateCode();
+        String deliveryPostalCode = pDoc.getBillingPostalCode();
+        purapService.calculateTaxForPREQ(purapDocument,deliveryState,deliveryPostalCode);
     }
 
     @Override
